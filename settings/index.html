@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Paramètres Sub Goal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #181818;
+      color: #ffd75e;
+      padding: 2em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h2 { margin-top: 0; }
+    form {
+      width: 100%;
+      max-width: 550px;
+      background: #232323;
+      padding: 1.5em;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px #0006;
+      margin-bottom: 1em;
+    }
+    .level, .conversion {
+      background: #2e2e2e;
+      margin-bottom: 10px;
+      padding: 0.8em;
+      border-radius: 6px;
+    }
+    label { display: block; margin-bottom: 0.3em; }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 0.4em;
+      border-radius: 5px;
+      border: none;
+      margin-bottom: 0.6em;
+      background: #333;
+      color: #ffd75e;
+    }
+    button {
+      padding: 0.6em 1em;
+      border: none;
+      border-radius: 5px;
+      background: #ffd75e;
+      color: #232323;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 0.3em;
+      transition: background 0.2s;
+    }
+    button:hover { background: #ffe28a; }
+    #link {
+      display: none;
+      background: #333;
+      padding: 0.6em;
+      border-radius: 5px;
+      color: white;
+      word-break: break-all;
+      max-width: 95vw;
+    }
+    #msg { margin-top: 0.5em; }
+  </style>
+</head>
+<body>
+
+  <h2>Configurer le Sub/Donation Goal</h2>
+
+  <form id="settingsForm">
+    <h3>Paliers</h3>
+    <div id="levels-container"></div>
+    <button type="button" id="addLevel">+ Ajouter un palier</button>
+
+    <h3>Points par action</h3>
+    <div class="conversion">
+      <label>100 bits = <input type="number" id="bitsInput" min="0" step="0.1" value="1"> points</label>
+      <label>1 sub = <input type="number" id="subsInput" min="0" step="0.1" value="2"> points</label>
+      <label>1€ de don = <input type="number" id="donInput" min="0" step="0.1" value="1"> points</label>
+    </div>
+
+    <button type="submit">Générer le lien</button>
+  </form>
+
+  <button id="copyBtn" style="display:none;">Copier le lien</button>
+  <div id="msg"></div>
+  <a id="link" href="#" target="_blank"></a>
+
+  <script>
+    const levelsContainer = document.getElementById("levels-container");
+    const addButton = document.getElementById("addLevel");
+    const linkEl = document.getElementById("link");
+    const msgEl = document.getElementById("msg");
+
+    let levels = [
+      { name: "Palier 1 : Décollage", target: 100 },
+      { name: "Palier 2 : Propulsion", target: 300 }
+    ];
+
+    // ---- GÉNÉRATION DES INPUTS DES PALIERS ----
+    function renderLevels() {
+      levelsContainer.innerHTML = "";
+      levels.forEach((lvl, i) => {
+        const div = document.createElement("div");
+        div.className = "level";
+        div.innerHTML = `
+          <label>Nom du palier</label>
+          <input type="text" value="${lvl.name}" data-index="${i}" data-field="name"/>
+          <label>Objectif (points)</label>
+          <input type="number" value="${lvl.target}" min="1" data-index="${i}" data-field="target"/>
+        `;
+        levelsContainer.appendChild(div);
+      });
+    }
+
+    addButton.onclick = () => {
+      levels.push({ name: "Nouveau palier", target: 100 });
+      renderLevels();
+    };
+
+    levelsContainer.addEventListener("input", (e) => {
+      const i = e.target.dataset.index;
+      const field = e.target.dataset.field;
+      levels[i][field] = e.target.value;
+    });
+
+    // ---- GÉNÉRATION DU LIEN ----
+    document.getElementById("settingsForm").onsubmit = (e) => {
+      e.preventDefault();
+
+      const points = {
+        bits: parseFloat(document.getElementById("bitsInput").value),
+        sub: parseFloat(document.getElementById("subsInput").value),
+        donation: parseFloat(document.getElementById("donInput").value)
+      };
+
+      const encodedLevels = encodeURIComponent(JSON.stringify(levels));
+      const encodedPoints = encodeURIComponent(JSON.stringify(points));
+
+      let base = window.location.origin + window.location.pathname;
+      base = base.replace(/settings\/index\.html$/, '').replace(/settings\/$/, '');
+      const url = `${base}?levels=${encodedLevels}&points=${encodedPoints}`;
+
+      linkEl.href = url;
+      linkEl.textContent = url;
+      linkEl.style.display = "block";
+      document.getElementById("copyBtn").style.display = "inline-block";
+      msgEl.textContent = "Copiez ce lien dans OBS ou votre navigateur !";
+    };
+
+    // ---- BOUTON COPIE ----
+    document.getElementById("copyBtn").onclick = () => {
+      const text = linkEl.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        msgEl.textContent = "Lien copié !";
+      }).catch(() => {
+        msgEl.textContent = "Erreur lors de la copie.";
+      });
+    };
+
+    renderLevels();
+  </script>
+</body>
+</html>
