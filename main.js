@@ -50,31 +50,63 @@ if (params.has("startPoints")) {
 
 updateBar();
 
+// Calculer le cumul des objectifs à chaque niveau
+function getGoalThreshold(level) {
+    let sum = 0;
+    for (let i = 0; i <= level; i++) {
+        sum += GOAL_SETTINGS.levels[i].target;
+    }
+    return sum;
+}
+
 
 function addPoints(pts) {
     currentPoints += pts;
-    const level = GOAL_SETTINGS.levels[currentLevel];
-    if (currentPoints >= level.target) {
-        currentPoints = currentPoints - level.target;
+
+    // Avance les paliers si besoin
+    while (
+        currentLevel < GOAL_SETTINGS.levels.length &&
+        currentPoints >= getGoalThreshold(currentLevel)
+    ) {
         advanceLevel();
     }
+
     updateBar();
+    saveProgress();
 }
+
 function advanceLevel() {
     if (currentLevel + 1 < GOAL_SETTINGS.levels.length) {
         currentLevel++;
         console.log("Nouveau palier :", GOAL_SETTINGS.levels[currentLevel].name);
+    } else {
+        console.log("Tous les paliers sont atteints !");
     }
+    // Pas besoin de remettre currentPoints à zéro
+    saveProgress();
 }
+
+
 function updateBar() {
     const level = GOAL_SETTINGS.levels[currentLevel];
-    const progress = (currentPoints / level.target) * 100;
+    const prevThreshold = getGoalThreshold(currentLevel - 1);
+    const nextThreshold = getGoalThreshold(currentLevel);
+
+    // Points accumulés sur le palier courant
+    const levelProgress = currentPoints - prevThreshold;
+    const levelTarget = level.target; // Objectif pour ce palier
+
+    // Progression sur ce palier
+    const progress = (levelProgress / levelTarget) * 100;
+
     goalTitle.textContent = level.name;
     goalProgressText.textContent = `${progress.toFixed(1)}%`;
     currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
-    goalTargetText.textContent = `/ ${level.target} pts`;
+    goalTargetText.textContent = `/ ${nextThreshold} pts total`;
+
     goalFill.style.width = `${Math.min(progress, 100)}%`;
 }
+
 
 // === LOGIQUE MODERNE AVEC EVENTS NATIFS ===
 const client = new StreamerbotClient({
