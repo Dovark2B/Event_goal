@@ -101,9 +101,7 @@ client.on('Twitch.GiftSub', (response) => {
     const count =
         parseInt(response.data.communitySubGiftCount, 10) ||
         parseInt(response.data.cumlativeTotal, 10) ||
-        1; // par défaut une seule sub
-
-    // Sauf si tu veux ajouter à chaque appel, alors juste 1
+        1; // par défaut un seul sub
 
     // Calcul total des points attribués
     const totalPoints = points * count;
