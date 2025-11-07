@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8">
   <title>Paramètres Sub Goal</title>
@@ -15,7 +16,11 @@
       align-items: center;
       min-height: 100vh;
     }
-    h2 { margin-top: 0; }
+
+    h2 {
+      margin-top: 0;
+    }
+
     form {
       width: 100%;
       max-width: 550px;
@@ -25,14 +30,22 @@
       box-shadow: 0 2px 8px #0006;
       margin-bottom: 1em;
     }
-    .level, .conversion {
+
+    .level,
+    .conversion {
       background: #2e2e2e;
       margin-bottom: 10px;
       padding: 0.8em;
       border-radius: 6px;
     }
-    label { display: block; margin-bottom: 0.3em; }
-    input[type="text"], input[type="number"] {
+
+    label {
+      display: block;
+      margin-bottom: 0.3em;
+    }
+
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
       padding: 0.4em;
       border-radius: 5px;
@@ -41,6 +54,7 @@
       background: #333;
       color: #ffd75e;
     }
+
     button {
       padding: 0.6em 1em;
       border: none;
@@ -52,7 +66,11 @@
       margin: 0.3em;
       transition: background 0.2s;
     }
-    button:hover { background: #ffe28a; }
+
+    button:hover {
+      background: #ffe28a;
+    }
+
     #link {
       display: none;
       background: #333;
@@ -62,9 +80,13 @@
       word-break: break-all;
       max-width: 95vw;
     }
-    #msg { margin-top: 0.5em; }
+
+    #msg {
+      margin-top: 0.5em;
+    }
   </style>
 </head>
+
 <body>
 
   <h2>Configurer le Sub/Donation Goal</h2>
@@ -79,6 +101,14 @@
       <label>100 bits = <input type="number" id="bitsInput" min="0" step="0.1" value="1"> points</label>
       <label>1 sub = <input type="number" id="subsInput" min="0" step="0.1" value="2"> points</label>
       <label>1€ de don = <input type="number" id="donInput" min="0" step="0.1" value="1"> points</label>
+    </div>
+
+    <!-- NOUVEAU : Points de départ -->
+    <h3>Configuration initiale</h3>
+    <div class="conversion">
+      <label>Points de départ :
+        <input type="number" id="startPointsInput" min="0" step="0.01" value="0" placeholder="Ex: 50.00">
+      </label>
     </div>
 
     <button type="submit">Générer le lien</button>
@@ -136,12 +166,14 @@
         donation: parseFloat(document.getElementById("donInput").value)
       };
 
+      const startPoints = parseFloat(document.getElementById("startPointsInput").value) || 0;
+
       const encodedLevels = encodeURIComponent(JSON.stringify(levels));
       const encodedPoints = encodeURIComponent(JSON.stringify(points));
 
       let base = window.location.origin + window.location.pathname;
       base = base.replace(/settings\/index\.html$/, '').replace(/settings\/$/, '');
-      const url = `${base}?levels=${encodedLevels}&points=${encodedPoints}`;
+      const url = `${base}?levels=${encodedLevels}&points=${encodedPoints}&startPoints=${startPoints}`;
 
       linkEl.href = url;
       linkEl.textContent = url;
@@ -149,6 +181,7 @@
       document.getElementById("copyBtn").style.display = "inline-block";
       msgEl.textContent = "Copiez ce lien dans OBS ou votre navigateur !";
     };
+
 
     // ---- BOUTON COPIE ----
     document.getElementById("copyBtn").onclick = () => {
@@ -163,4 +196,5 @@
     renderLevels();
   </script>
 </body>
+
 </html>

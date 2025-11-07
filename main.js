@@ -28,7 +28,9 @@ const currentPointsText = document.getElementById("current-points");
 const goalTargetText = document.getElementById("goal-target");
 
 // MAJ paramètres depuis l'URL
+// Lecture des paramètres URL
 const params = new URLSearchParams(window.location.search);
+
 if (params.has("levels")) {
     try {
         GOAL_SETTINGS.levels = JSON.parse(decodeURIComponent(params.get("levels")));
@@ -39,7 +41,15 @@ if (params.has("points")) {
         GOAL_SETTINGS.points = JSON.parse(decodeURIComponent(params.get("points")));
     } catch (e) { console.error("Erreur lecture points:", e); }
 }
+
+// NOUVEAU : Points de départ
+if (params.has("startPoints")) {
+    currentPoints = parseFloat(params.get("startPoints")) || 0;
+    console.log("Points de départ définis à :", currentPoints);
+}
+
 updateBar();
+
 
 function addPoints(pts) {
     currentPoints += pts;
@@ -89,7 +99,7 @@ client.on('Twitch.ReSub', (response) => {
 // TWITCH GIFT SUB
 client.on('Twitch.GiftSub', (response) => {
     console.log("Event Twitch.GiftSub :", response.data);
-    
+
     // subTier : "1000" (Tier 1), "2000" (Tier 2), "3000" (Tier 3)
     const tier = String(response.data.subTier || '').toLowerCase();
     let points = GOAL_SETTINGS.points.sub; // Default Tier 1
@@ -143,42 +153,42 @@ client.on('TipeeeStream.Donation', ({ event, data }) => {
 });
 
 
- /*TEST TRIGGERS
+/*TEST TRIGGERS
 client.on('Raw.Action', (response) => {
-    const args = response.data?.arguments;
-    if (!args) return;
+   const args = response.data?.arguments;
+   if (!args) return;
 
-    // DONATION TEST
-    if (args.triggerName === "Donation" && args.triggerCategory === "Integrations/TipeeeStream") {
-        let amount = parseFloat(args.amount) || 0;
-        if (args.currency === "USD") amount *= 0.95;
-        addPoints(amount * GOAL_SETTINGS.points.donation);
-        return;
-    }
+   // DONATION TEST
+   if (args.triggerName === "Donation" && args.triggerCategory === "Integrations/TipeeeStream") {
+       let amount = parseFloat(args.amount) || 0;
+       if (args.currency === "USD") amount *= 0.95;
+       addPoints(amount * GOAL_SETTINGS.points.donation);
+       return;
+   }
 
-    // SUB TEST
-    if (args.triggerName === "Subscription" && args.triggerCategory === "Twitch/Subscriptions") {
-        addPoints(GOAL_SETTINGS.points.sub);
-        return;
-    }
+   // SUB TEST
+   if (args.triggerName === "Subscription" && args.triggerCategory === "Twitch/Subscriptions") {
+       addPoints(GOAL_SETTINGS.points.sub);
+       return;
+   }
 
-    // GIFT SUB TEST
-    if (args.triggerName === "Gift Subscription" && args.triggerCategory === "Twitch/Subscriptions") {
-        let points = GOAL_SETTINGS.points.sub;
-        const tier = String(args.tier || '').toLowerCase();
-        if (tier.includes('2')) points = 3;
-        if (tier.includes('3')) points = 4;
-        addPoints(points);
-        return;
-    }
+   // GIFT SUB TEST
+   if (args.triggerName === "Gift Subscription" && args.triggerCategory === "Twitch/Subscriptions") {
+       let points = GOAL_SETTINGS.points.sub;
+       const tier = String(args.tier || '').toLowerCase();
+       if (tier.includes('2')) points = 3;
+       if (tier.includes('3')) points = 4;
+       addPoints(points);
+       return;
+   }
 
-    // BITS TEST
-    if (args.triggerName === "Cheer" && args.triggerCategory === "Twitch/Chat") {
-        const bits = parseInt(args.bits, 10) || 0;
-        const pts = parseFloat((bits * GOAL_SETTINGS.points.bits / 100).toFixed(2));
-        console.log(`Ajout de points bits: ${bits} bits -> ${pts} pts`);
-        addPoints(pts);
-        return;
-    }
+   // BITS TEST
+   if (args.triggerName === "Cheer" && args.triggerCategory === "Twitch/Chat") {
+       const bits = parseInt(args.bits, 10) || 0;
+       const pts = parseFloat((bits * GOAL_SETTINGS.points.bits / 100).toFixed(2));
+       console.log(`Ajout de points bits: ${bits} bits -> ${pts} pts`);
+       addPoints(pts);
+       return;
+   }
 });
 */
