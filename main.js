@@ -101,24 +101,17 @@ client.on('Twitch.GiftSub', (response) => {
     console.log("Event Twitch.GiftSub :", response.data);
 
     // subTier : "1000" (Tier 1), "2000" (Tier 2), "3000" (Tier 3)
-    const tier = String(response.data.subTier || '').toLowerCase();
-    let points = GOAL_SETTINGS.points.sub; // Default Tier 1
+    const tier = String(response.data.subTier || '');
+    let points = GOAL_SETTINGS.points.sub; // Default Tier 1 = 3 dans tes paramètres
 
     if (tier === '2000') points = 3;    // Tier 2
     else if (tier === '3000') points = 4; // Tier 3
 
-    // Pour gérer les bombes ou séries, cumlativeTotal ou communitySubGiftCount
-    const count =
-        parseInt(response.data.communitySubGiftCount, 10) ||
-        parseInt(response.data.cumlativeTotal, 10) ||
-        1; // par défaut un seul sub
-
-    // Calcul total des points attribués
-    const totalPoints = points * count;
-
-    console.log(`SubGift : tier = ${tier}, count = ${count}, total points = ${totalPoints}`);
-    addPoints(totalPoints);
+    // ✅ UN SEUL SUB PAR ÉVÉNEMENT, pas de multiplication
+    console.log(`SubGift : tier = ${tier}, points = ${points}`);
+    addPoints(points);
 });
+
 
 
 // TWITCH CHEER (BITS)
