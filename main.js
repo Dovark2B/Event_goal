@@ -52,6 +52,7 @@ updateBar();
 
 // Calculer le cumul des objectifs à chaque niveau
 function getGoalThreshold(level) {
+    if (level < 0) return 0;
     let sum = 0;
     for (let i = 0; i <= level; i++) {
         sum += GOAL_SETTINGS.levels[i].target;
@@ -72,7 +73,7 @@ function addPoints(pts) {
     }
 
     updateBar();
-    saveProgress();
+    // saveProgress();
 }
 
 function advanceLevel() {
@@ -83,14 +84,13 @@ function advanceLevel() {
         console.log("Tous les paliers sont atteints !");
     }
     // Pas besoin de remettre currentPoints à zéro
-    saveProgress();
+    // saveProgress();
 }
 
 
 function updateBar() {
     const level = GOAL_SETTINGS.levels[currentLevel];
     const prevThreshold = getGoalThreshold(currentLevel - 1);
-    const nextThreshold = getGoalThreshold(currentLevel);
 
     // Points accumulés sur le palier courant
     const levelProgress = currentPoints - prevThreshold;
@@ -102,7 +102,7 @@ function updateBar() {
     goalTitle.textContent = level.name;
     goalProgressText.textContent = `${progress.toFixed(1)}%`;
     currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
-    goalTargetText.textContent = `/ ${nextThreshold} pts total`;
+    goalTargetText.textContent = `/ ${levelTarget} pts total`;
 
     goalFill.style.width = `${Math.min(progress, 100)}%`;
 }
@@ -116,69 +116,69 @@ const client = new StreamerbotClient({
     onDisconnect: () => console.log("❌ Déconnecté de Streamer.bot")
 });
 
-// TWITCH SUB
-client.on('Twitch.Sub', (response) => {
-    console.log("Event Twitch.Sub :", response.data);
-    addPoints(GOAL_SETTINGS.points.sub);
-});
+// // TWITCH SUB
+// client.on('Twitch.Sub', (response) => {
+//     console.log("Event Twitch.Sub :", response.data);
+//     addPoints(GOAL_SETTINGS.points.sub);
+// });
 
-// TWITCH RESUB (si tu veux le compter pareil que Sub)
-client.on('Twitch.ReSub', (response) => {
-    console.log("Event Twitch.ReSub :", response.data);
-    addPoints(GOAL_SETTINGS.points.sub);
-});
+// // TWITCH RESUB (si tu veux le compter pareil que Sub)
+// client.on('Twitch.ReSub', (response) => {
+//     console.log("Event Twitch.ReSub :", response.data);
+//     addPoints(GOAL_SETTINGS.points.sub);
+// });
 
-// TWITCH GIFT SUB
-client.on('Twitch.GiftSub', (response) => {
-    console.log("Event Twitch.GiftSub :", response.data);
+// // TWITCH GIFT SUB
+// client.on('Twitch.GiftSub', (response) => {
+//     console.log("Event Twitch.GiftSub :", response.data);
 
-    // subTier : "1000" (Tier 1), "2000" (Tier 2), "3000" (Tier 3)
-    const tier = String(response.data.subTier || '');
-    let points = GOAL_SETTINGS.points.sub; // Default Tier 1 = 3 dans tes paramètres
+//     // subTier : "1000" (Tier 1), "2000" (Tier 2), "3000" (Tier 3)
+//     const tier = String(response.data.subTier || '');
+//     let points = GOAL_SETTINGS.points.sub; // Default Tier 1 = 3 dans tes paramètres
 
-    if (tier === '2000') points = 3;    // Tier 2
-    else if (tier === '3000') points = 4; // Tier 3
+//     if (tier === '2000') points = 3;    // Tier 2
+//     else if (tier === '3000') points = 4; // Tier 3
 
-    // ✅ UN SEUL SUB PAR ÉVÉNEMENT, pas de multiplication
-    console.log(`SubGift : tier = ${tier}, points = ${points}`);
-    addPoints(points);
-});
-
-
-
-// TWITCH CHEER (BITS)
-client.on('Twitch.Cheer', (response) => {
-    // 'bits' entier natif, 100 bits = 1 point
-    const bits = parseInt(response.data.bits, 10) || 0;
-    const pts = parseFloat((bits * GOAL_SETTINGS.points.bits / 100).toFixed(2));
-    console.log(`Event Twitch.Cheer : ${bits} bits => ${pts} points`);
-    addPoints(pts);
-});
-
-// STREAMLABS DONATION
-client.on('Streamlabs.Donation', (response) => {
-    const amount = parseFloat(response.data.amount) || 0;
-    console.log("Event Streamlabs.Donation :", amount);
-    addPoints(amount * GOAL_SETTINGS.points.donation);
-});
-
-// STREAMELEMENTS TIP
-client.on('StreamElements.Tip', (response) => {
-    const amount = parseFloat(response.data.amount) || 0;
-    console.log("Event StreamElements.Tip :", amount);
-    addPoints(amount * GOAL_SETTINGS.points.donation);
-});
-
-// TIPEEESTREAM DONATION
-client.on('TipeeeStream.Donation', ({ event, data }) => {
-    const amount = parseFloat(data.amount) || 0;
-    console.log('Received event:', event.source, event.type);
-    console.log('Event data:', data)
-    addPoints(amount * GOAL_SETTINGS.points.donation);
-});
+//     // ✅ UN SEUL SUB PAR ÉVÉNEMENT, pas de multiplication
+//     console.log(`SubGift : tier = ${tier}, points = ${points}`);
+//     addPoints(points);
+// });
 
 
-/*TEST TRIGGERS
+
+// // TWITCH CHEER (BITS)
+// client.on('Twitch.Cheer', (response) => {
+//     // 'bits' entier natif, 100 bits = 1 point
+//     const bits = parseInt(response.data.bits, 10) || 0;
+//     const pts = parseFloat((bits * GOAL_SETTINGS.points.bits / 100).toFixed(2));
+//     console.log(`Event Twitch.Cheer : ${bits} bits => ${pts} points`);
+//     addPoints(pts);
+// });
+
+// // STREAMLABS DONATION
+// client.on('Streamlabs.Donation', (response) => {
+//     const amount = parseFloat(response.data.amount) || 0;
+//     console.log("Event Streamlabs.Donation :", amount);
+//     addPoints(amount * GOAL_SETTINGS.points.donation);
+// });
+
+// // STREAMELEMENTS TIP
+// client.on('StreamElements.Tip', (response) => {
+//     const amount = parseFloat(response.data.amount) || 0;
+//     console.log("Event StreamElements.Tip :", amount);
+//     addPoints(amount * GOAL_SETTINGS.points.donation);
+// });
+
+// // TIPEEESTREAM DONATION
+// client.on('TipeeeStream.Donation', ({ event, data }) => {
+//     const amount = parseFloat(data.amount) || 0;
+//     console.log('Received event:', event.source, event.type);
+//     console.log('Event data:', data)
+//     addPoints(amount * GOAL_SETTINGS.points.donation);
+// });
+
+
+// TEST TRIGGERS
 client.on('Raw.Action', (response) => {
    const args = response.data?.arguments;
    if (!args) return;
@@ -216,4 +216,4 @@ client.on('Raw.Action', (response) => {
        return;
    }
 });
-*/
+
