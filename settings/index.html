@@ -71,6 +71,17 @@
       background: #ffe28a;
     }
 
+    button.deleteBtn {
+      background: #d32f2f;
+      color: white;
+      margin-top: 0.5em;
+      width: 100%;
+    }
+
+    button.deleteBtn:hover {
+      background: #f44336;
+    }
+
     #link {
       display: none;
       background: #333;
@@ -136,10 +147,13 @@
         const div = document.createElement("div");
         div.className = "level";
         div.innerHTML = `
-          <label>Nom du palier</label>
-          <input type="text" value="${lvl.name}" data-index="${i}" data-field="name"/>
-          <label>Objectif (points)</label>
-          <input type="number" value="${lvl.target}" min="1" data-index="${i}" data-field="target"/>
+          <label>Nom du palier ${i + 1}:
+            <input type="text" data-index="${i}" data-field="name" value="${lvl.name}">
+          </label>
+          <label>Objectif (points):
+            <input type="number" data-index="${i}" data-field="target" min="1" value="${lvl.target}">
+          </label>
+          <button type="button" class="deleteBtn" data-index="${i}">🗑️ Supprimer ce palier</button>
         `;
         levelsContainer.appendChild(div);
       });
@@ -156,9 +170,31 @@
       levels[i][field] = e.target.value;
     });
 
+    // NOUVEAU : Suppression des paliers
+    levelsContainer.addEventListener("click", (e) => {
+      if (e.target.classList.contains("deleteBtn")) {
+        const index = parseInt(e.target.dataset.index);
+        if (levels.length > 1) {
+          levels.splice(index, 1);
+          renderLevels();
+        } else {
+          alert("❌ Vous devez garder au moins 1 palier !");
+        }
+      }
+    });
+
     // ---- GÉNÉRATION DU LIEN ----
     document.getElementById("settingsForm").onsubmit = (e) => {
       e.preventDefault();
+
+      // NOUVEAU : Validation des paliers
+      for (let i = 1; i < levels.length; i++) {
+        if (levels[i].target < levels[i - 1].target) {
+          msgEl.textContent = `❌ Erreur : Palier ${i + 1} doit être >= Palier ${i}`;
+          msgEl.style.color = "red";
+          return;
+        }
+      }
 
       const points = {
         bits: parseFloat(document.getElementById("bitsInput").value),

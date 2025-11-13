@@ -33,8 +33,20 @@ const params = new URLSearchParams(window.location.search);
 
 if (params.has("levels")) {
     try {
-        GOAL_SETTINGS.levels = JSON.parse(decodeURIComponent(params.get("levels")));
-    } catch (e) { console.error("Erreur lecture niveaux:", e); }
+        const parsedLevels = JSON.parse(decodeURIComponent(params.get("levels")));
+        
+        // NOUVEAU : Validation - chaque palier doit être >= au précédent
+        for (let i = 1; i < parsedLevels.length; i++) {
+            if (parsedLevels[i].target < parsedLevels[i - 1].target) {
+                console.warn(`⚠️ Palier ${i + 1} (${parsedLevels[i].target}) est inférieur au Palier ${i} (${parsedLevels[i - 1].target}). Correction appliquée.`);
+                parsedLevels[i].target = parsedLevels[i - 1].target;
+            }
+        }
+        
+        GOAL_SETTINGS.levels = parsedLevels;
+    } catch (e) {
+        console.error("Erreur parsing levels:", e);
+    }
 }
 if (params.has("points")) {
     try {
