@@ -190,7 +190,7 @@
       // NOUVEAU : Validation des paliers
       for (let i = 1; i < levels.length; i++) {
         if (levels[i].target < levels[i - 1].target) {
-          msgEl.textContent = `❌ Erreur : Palier ${i + 1} doit être >= Palier ${i}`;
+          msgEl.textContent = `❌ Erreur : Palier ${i + 1} (${levels[i].target}) doit être >= Palier ${i} (${levels[i - 1].target})`;
           msgEl.style.color = "red";
           return;
         }

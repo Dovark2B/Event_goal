@@ -62,16 +62,20 @@ if (params.has("startPoints")) {
 
 updateBar();
 
-// Calculer le cumul des objectifs à chaque niveau
+// Retourne le jalon absolu du niveau (on n'additionne plus)
 function getGoalThreshold(level) {
     if (level < 0) return 0;
-    let sum = 0;
-    for (let i = 0; i <= level; i++) {
-        sum += GOAL_SETTINGS.levels[i].target;
-    }
-    return sum;
+    return GOAL_SETTINGS.levels[level].target;
 }
 
+// Cible "par palier" = différence entre ce palier et le précédent
+function getLevelTarget(levelIndex) {
+    if (levelIndex < 0) return 0;
+    if (levelIndex === 0) return GOAL_SETTINGS.levels[0].target;
+    const prev = GOAL_SETTINGS.levels[levelIndex - 1].target;
+    const cur = GOAL_SETTINGS.levels[levelIndex].target;
+    return Math.max(0, cur - prev);
+}
 
 function addPoints(pts) {
     currentPoints += pts;
@@ -104,17 +108,19 @@ function updateBar() {
     const level = GOAL_SETTINGS.levels[currentLevel];
     const prevThreshold = getGoalThreshold(currentLevel - 1);
 
-    // Points accumulés sur le palier courant
+    // Points accumulés sur le palier courant (différence depuis le palier précédent)
     const levelProgress = currentPoints - prevThreshold;
-    const levelTarget = level.target; // Objectif pour ce palier
+    const levelTarget = getLevelTarget(currentLevel); // différence entre palier courant et précédent
 
-    // Progression sur ce palier
-    const progress = (levelProgress / levelTarget) * 100;
+    // Progression sur ce palier (en %)
+    const progress = levelTarget > 0 ? (levelProgress / levelTarget) * 100 : 100;
 
     goalTitle.textContent = level.name;
     goalProgressText.textContent = `${progress.toFixed(1)}%`;
     currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
-    goalTargetText.textContent = `/ ${levelTarget} pts total`;
+
+    // Affiche le goal PARAMÈTRE (jalon absolu) — ex: 600
+    goalTargetText.textContent = `/ ${getGoalThreshold(currentLevel)} pts`;
 
     goalFill.style.width = `${Math.min(progress, 100)}%`;
 }
