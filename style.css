@@ -2,7 +2,7 @@
 
 :root {
   --bg-color: rgba(30, 30, 30, 0.99);
-  --accent-color: linear-gradient(90deg, #705116, #ffb74a);
+  --accent-color: linear-gradient(90deg, #705116, #ffb74a, #705116, #ffb74a);
   --text-color: #ffffff;
   --fill-color: #ebb522;
   --border-radius: 10px;
@@ -50,21 +50,21 @@ body {
 #goal-fill {
   width: 0%;
   height: 100%;
-  background: var(--accent-color);
+  background-image: linear-gradient(90deg, #ad7d22, #ffb74a, #ad7d22, #ffb74a);
+  background-size: 400% 400%;
   border-radius: var(--border-radius);
-  transition: width 0.7s ease-in-out;
-  animation: pulse 2s infinite ease-in-out alternate;
+  transition: ease width 0.5s;
+  animation: pulse 1s linear infinite;
 }
 
 /* Animation douce de la barre */
 @keyframes pulse {
-  0% {
-    opacity: 0.9;
-  }
-  100% {
-    opacity: 1;
-    filter: brightness(1.15);
-  }
+    0% {
+        background-position: 100% 0%
+    }
+    100% {
+        background-position: 15% 100%
+    }
 }
 
 /* Footer */

@@ -77,7 +77,11 @@ function getLevelTarget(levelIndex) {
     return Math.max(0, cur - prev);
 }
 
-function addPoints(pts) {
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function addPoints(pts) {
     currentPoints += pts;
 
     // Avance les paliers si besoin
@@ -85,6 +89,9 @@ function addPoints(pts) {
         currentLevel < GOAL_SETTINGS.levels.length &&
         currentPoints >= getGoalThreshold(currentLevel)
     ) {
+        updateBar();
+        await sleep(400); // Pause avant d'annoncer le nouveau palier
+
         advanceLevel();
     }
 
@@ -92,38 +99,46 @@ function addPoints(pts) {
     // saveProgress();
 }
 
+
+
 function advanceLevel() {
     if (currentLevel + 1 < GOAL_SETTINGS.levels.length) {
         currentLevel++;
         console.log("Nouveau palier :", GOAL_SETTINGS.levels[currentLevel].name);
     } else {
         console.log("Tous les paliers sont atteints !");
+        currentLevel = GOAL_SETTINGS.levels.length;
     }
-    // Pas besoin de remettre currentPoints à zéro
-    // saveProgress();
+
 }
 
 
 function updateBar() {
-    const level = GOAL_SETTINGS.levels[currentLevel];
-    const prevThreshold = getGoalThreshold(currentLevel - 1);
-
-    // Points accumulés sur le palier courant (différence depuis le palier précédent)
-    const levelProgress = currentPoints - prevThreshold;
-    const levelTarget = getLevelTarget(currentLevel); // différence entre palier courant et précédent
-
-    // Progression sur ce palier (en %)
-    const progress = levelTarget > 0 ? (levelProgress / levelTarget) * 100 : 100;
-
-    goalTitle.textContent = level.name;
-    goalProgressText.textContent = `${progress.toFixed(1)}%`;
+  if (currentLevel >= GOAL_SETTINGS.levels.length) {
+    // Tous les paliers sont atteints
+    goalTitle.textContent = "Tous les paliers atteints !";
+    goalProgressText.textContent = "100%";
     currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
+    goalTargetText.textContent = `/ ${getGoalThreshold(GOAL_SETTINGS.levels.length - 1)} pts`;
+    goalFill.style.width = "100%";
+    return;
+  }
 
-    // Affiche le goal PARAMÈTRE (jalon absolu) — ex: 600
-    goalTargetText.textContent = `/ ${getGoalThreshold(currentLevel)} pts`;
+  const level = GOAL_SETTINGS.levels[currentLevel];
+  const prevThreshold = getGoalThreshold(currentLevel - 1);
 
-    goalFill.style.width = `${Math.min(progress, 100)}%`;
+  const levelProgress = currentPoints - prevThreshold;
+  const levelTarget = getLevelTarget(currentLevel);
+  const progress = levelTarget > 0 ? (levelProgress / levelTarget) * 100 : 100;
+
+  goalTitle.textContent = level.name;
+  goalProgressText.textContent = `${progress.toFixed(1)}%`;
+  currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
+  goalTargetText.textContent = `/ ${getGoalThreshold(currentLevel)} pts`;
+  goalFill.style.width = `${Math.min(progress, 100)}%`;
+
 }
+
 
 
 // === LOGIQUE MODERNE AVEC EVENTS NATIFS ===
@@ -188,12 +203,31 @@ client.on('StreamElements.Tip', (response) => {
 });
 
 // TIPEEESTREAM DONATION
-client.on('TipeeeStream.Donation', ({ event, data }) => {
-    const amount = parseFloat(data.amount) || 0;
+client.on('TipeeeStream.Donation', (payload) => {
+  try {
+    console.log('Tipeee payload brut:', payload);
+
+    const event = payload?.event || {};
+    const data  = payload?.data  || {};
+
+    const rawAmount = data.amount ?? data.value ?? 0;
+    const amount = parseFloat(rawAmount) || 0;
+
     console.log('Received event:', event.source, event.type);
-    console.log('Event data:', data)
-    addPoints(amount * GOAL_SETTINGS.points.donation);
+    console.log('Event data:', data);
+    console.log('Montant parsé:', amount);
+
+    if (!Number.isFinite(amount)) {
+      console.warn('Montant non valide, aucun point ajouté');
+      return;
+    }
+
+    addPoints(amount * (GOAL_SETTINGS.points.donation || 1));
+  } catch (e) {
+    console.error('Erreur dans TipeeeStream.Donation handler:', e);
+  }
 });
+
 
 
 // // TEST TRIGGERS
