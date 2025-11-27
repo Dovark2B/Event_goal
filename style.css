@@ -2,7 +2,7 @@
 
 :root {
   --bg-color: rgba(30, 30, 30, 0.99);
-  --accent-color: linear-gradient(90deg, #705116, #ffb74a, #705116, #ffb74a);
+  --accent-color: linear-gradient(90deg, #ad7d22 0%, #ffb74a 33%, #ad7d22 66%, #ffb74a 100%);
   --text-color: #ffffff;
   --fill-color: #ebb522;
   --border-radius: 10px;
@@ -21,7 +21,7 @@ body {
   margin: 20px auto;
   background: var(--bg-color);
   border-radius: var(--border-radius);
-  padding: 15px;
+  padding: 12px;
   box-shadow: 0 0 8px rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
@@ -33,8 +33,8 @@ body {
   width: 100%;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 18px;
+  margin-bottom: 6px;
+  font-size: 24px;
 }
 
 /* Barre principale */
@@ -50,11 +50,11 @@ body {
 #goal-fill {
   width: 0%;
   height: 100%;
-  background-image: linear-gradient(90deg, #ad7d22, #ffb74a, #ad7d22, #ffb74a);
+  background: var(--accent-color);
   background-size: 400% 400%;
   border-radius: var(--border-radius);
   transition: ease width 0.5s;
-  animation: pulse 1s linear infinite;
+  animation: pulse 5s linear infinite;
 }
 
 /* Animation douce de la barre */
@@ -72,8 +72,8 @@ body {
   width: 100%;
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
-  font-size: 16px;
+  margin-top: 6px;
+  font-size: 24px;
 }
 
 /* Ajustement dynamique OBS */

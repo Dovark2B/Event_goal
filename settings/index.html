@@ -170,7 +170,7 @@
       levels[i][field] = e.target.value;
     });
 
-    // NOUVEAU : Suppression des paliers
+    // Suppression des paliers
     levelsContainer.addEventListener("click", (e) => {
       if (e.target.classList.contains("deleteBtn")) {
         const index = parseInt(e.target.dataset.index);
@@ -178,7 +178,7 @@
           levels.splice(index, 1);
           renderLevels();
         } else {
-          alert("❌ Vous devez garder au moins 1 palier !");
+          alert(" Vous devez garder au moins 1 palier !");
         }
       }
     });
@@ -187,10 +187,10 @@
     document.getElementById("settingsForm").onsubmit = (e) => {
       e.preventDefault();
 
-      // NOUVEAU : Validation des paliers
+      // Validation des paliers
       for (let i = 1; i < levels.length; i++) {
         if (levels[i].target < levels[i - 1].target) {
-          msgEl.textContent = `❌ Erreur : Palier ${i + 1} (${levels[i].target}) doit être >= Palier ${i} (${levels[i - 1].target})`;
+          msgEl.textContent = ` Erreur : Palier ${i + 1} (${levels[i].target}) doit être >= Palier ${i} (${levels[i - 1].target})`;
           msgEl.style.color = "red";
           return;
         }
