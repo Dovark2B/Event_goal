@@ -16,6 +16,7 @@ body {
   color: var(--text-color);
 }
 
+
 #goal-container {
   width: 600px;
   margin: 20px auto;
@@ -50,14 +51,59 @@ body {
   position: relative;
 }
 
+#wave1 {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 40px;
+    height: 50px;
+    left: 0%;
+    top: -60%;
+    transform: translateX(-50%);
+    background: #eba941;
+    border-radius: 50%;
+    animation: wave 0.5s ease-in-out infinite alternate;
+    transition: ease left 0.5s;
+
+}
+#wave2 {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 40px;
+    height: 50px;
+    left: 0%;
+    top: -10%;
+    transform: translateX(-50%);
+    background: #eba941;
+    border-radius: 50%;
+    animation: wave 0.5s ease-in-out infinite alternate;
+    animation-delay: -80ms;
+    transition: ease left 0.5s;
+}
+
+
+@keyframes wave {
+    0% {
+        transform: translateX(-80%);
+    }
+    100% {
+        transform: translateX(-60%);
+        
+    }
+}
+
 #goal-fill {
+  position: absolute;
   width: 0%;
   height: 100%;
+  z-index: 2;
   background: var(--accent-color);
   background-size: 400% 400%;
   border-radius: var(--border-radius);
   transition: ease width 0.5s;
-  animation: pulse 5s linear infinite;
+
+  /* animation: pulse 5s linear infinite; */
 }
 
 /* Animation douce de la barre */

@@ -21,6 +21,9 @@ const GOAL_SETTINGS = {
 let currentPoints = 0;
 let currentLevel = 0;
 
+let lastProgressDisplay = 0;
+let lastPointsDisplay = 0;
+
 const goalTitle = document.getElementById("goal-title");
 const goalProgressText = document.getElementById("goal-progress-text");
 const goalFill = document.getElementById("goal-fill");
@@ -34,7 +37,7 @@ const params = new URLSearchParams(window.location.search);
 if (params.has("levels")) {
     try {
         const parsedLevels = JSON.parse(decodeURIComponent(params.get("levels")));
-        
+
         // NOUVEAU : Validation - chaque palier doit être >= au précédent
         for (let i = 1; i < parsedLevels.length; i++) {
             if (parsedLevels[i].target < parsedLevels[i - 1].target) {
@@ -42,7 +45,7 @@ if (params.has("levels")) {
                 parsedLevels[i].target = parsedLevels[i - 1].target;
             }
         }
-        
+
         GOAL_SETTINGS.levels = parsedLevels;
     } catch (e) {
         console.error("Erreur parsing levels:", e);
@@ -78,7 +81,7 @@ function getLevelTarget(levelIndex) {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function addPoints(pts) {
@@ -90,7 +93,7 @@ async function addPoints(pts) {
         currentPoints >= getGoalThreshold(currentLevel)
     ) {
         updateBar();
-        await sleep(400); // Pause avant d'annoncer le nouveau palier
+        await sleep(300); // Pause avant d'annoncer le nouveau palier
 
         advanceLevel();
     }
@@ -99,6 +102,23 @@ async function addPoints(pts) {
     // saveProgress();
 }
 
+function animateValue(element, start, end, duration, formatter) {
+    const startTime = performance.now();
+
+    function frame(now) {
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / duration, 1); // 0 → 1
+        const value = start + (end - start) * t;
+
+        element.textContent = formatter(value);
+
+        if (t < 1) {
+            requestAnimationFrame(frame);
+        }
+    }
+
+    requestAnimationFrame(frame);
+}
 
 
 function advanceLevel() {
@@ -113,29 +133,78 @@ function advanceLevel() {
 }
 
 
+
 function updateBar() {
-  if (currentLevel >= GOAL_SETTINGS.levels.length) {
-    // Tous les paliers sont atteints
-    goalTitle.textContent = "Tous les paliers atteints !";
-    goalProgressText.textContent = "100%";
-    currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
-    goalTargetText.textContent = `/ ${getGoalThreshold(GOAL_SETTINGS.levels.length - 1)} pts`;
-    goalFill.style.width = "100%";
-    return;
-  }
+    const lastIndex = GOAL_SETTINGS.levels.length - 1;
 
-  const level = GOAL_SETTINGS.levels[currentLevel];
-  const prevThreshold = getGoalThreshold(currentLevel - 1);
+    if (currentLevel >= GOAL_SETTINGS.levels.length) {
 
-  const levelProgress = currentPoints - prevThreshold;
-  const levelTarget = getLevelTarget(currentLevel);
-  const progress = levelTarget > 0 ? (levelProgress / levelTarget) * 100 : 100;
+        const lastThreshold = getGoalThreshold(lastIndex);
+        const rawProgress = (currentPoints / lastThreshold) * 100;
+        const clampedWidth = Math.min(rawProgress, 100);
 
-  goalTitle.textContent = level.name;
-  goalProgressText.textContent = `${progress.toFixed(1)}%`;
-  currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
-  goalTargetText.textContent = `/ ${getGoalThreshold(currentLevel)} pts`;
-  goalFill.style.width = `${Math.min(progress, 100)}%`;
+        goalTitle.textContent = "Tous les paliers atteints !";
+
+        animateValue(
+            goalProgressText,
+            lastProgressDisplay,
+            rawProgress,
+            400,
+            (v) => `${v.toFixed(1)}%`
+        );
+
+        lastProgressDisplay = rawProgress;
+
+        animateValue(
+            currentPointsText,
+            lastPointsDisplay,
+            currentPoints,
+            400,
+            (v) => `${v.toFixed(2)} pts`
+        );
+
+        lastPointsDisplay = currentPoints;
+        goalProgressText.textContent = `${rawProgress.toFixed(1)}%`;
+        currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
+        goalTargetText.textContent = `/ ${lastThreshold} pts`;
+        goalFill.style.width = `${clampedWidth}%`;
+        wave1.style.left = `${clampedWidth}%`;
+        wave2.style.left = `${clampedWidth}%`;
+        return;
+    }
+
+    const level = GOAL_SETTINGS.levels[currentLevel];
+    const prevThreshold = getGoalThreshold(currentLevel - 1);
+
+    const levelProgress = currentPoints - prevThreshold;
+    const levelTarget = getLevelTarget(currentLevel);
+    const progress = levelTarget > 0 ? (levelProgress / levelTarget) * 100 : 100;
+
+    goalTitle.textContent = level.name;
+
+    animateValue(
+        goalProgressText,
+        lastProgressDisplay,
+        progress,
+        400,
+        (v) => `${v.toFixed(1)}%`
+    );
+    lastProgressDisplay = progress;
+
+
+    animateValue(
+        currentPointsText,
+        lastPointsDisplay,
+        currentPoints,
+        400,
+        (v) => `${v.toFixed(2)} pts`
+    );
+    lastPointsDisplay = currentPoints;
+
+    goalTargetText.textContent = `/ ${getGoalThreshold(currentLevel)} pts`;
+    goalFill.style.width = `${Math.min(progress, 100)}%`;
+    wave1.style.left = `${Math.min(progress, 100)}%`;
+    wave2.style.left = `${Math.min(progress, 100)}%`;
 
 }
 
@@ -204,28 +273,28 @@ client.on('StreamElements.Tip', (response) => {
 
 // TIPEEESTREAM DONATION
 client.on('TipeeeStream.Donation', (payload) => {
-  try {
-    console.log('Tipeee payload brut:', payload);
+    try {
+        console.log('Tipeee payload brut:', payload);
 
-    const event = payload?.event || {};
-    const data  = payload?.data  || {};
+        const event = payload?.event || {};
+        const data = payload?.data || {};
 
-    const rawAmount = data.amount ?? data.value ?? 0;
-    const amount = parseFloat(rawAmount) || 0;
+        const rawAmount = data.amount ?? data.value ?? 0;
+        const amount = parseFloat(rawAmount) || 0;
 
-    console.log('Received event:', event.source, event.type);
-    console.log('Event data:', data);
-    console.log('Montant parsé:', amount);
+        console.log('Received event:', event.source, event.type);
+        console.log('Event data:', data);
+        console.log('Montant parsé:', amount);
 
-    if (!Number.isFinite(amount)) {
-      console.warn('Montant non valide, aucun point ajouté');
-      return;
+        if (!Number.isFinite(amount)) {
+            console.warn('Montant non valide, aucun point ajouté');
+            return;
+        }
+
+        addPoints(amount * (GOAL_SETTINGS.points.donation || 1));
+    } catch (e) {
+        console.error('Erreur dans TipeeeStream.Donation handler:', e);
     }
-
-    addPoints(amount * (GOAL_SETTINGS.points.donation || 1));
-  } catch (e) {
-    console.error('Erreur dans TipeeeStream.Donation handler:', e);
-  }
 });
 
 
