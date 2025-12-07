@@ -29,10 +29,39 @@ const goalProgressText = document.getElementById("goal-progress-text");
 const goalFill = document.getElementById("goal-fill");
 const currentPointsText = document.getElementById("current-points");
 const goalTargetText = document.getElementById("goal-target");
+const wave1 = document.getElementById("wave1");
+const wave2 = document.getElementById("wave2");
+
 
 // MAJ paramètres depuis l'URL
 // Lecture des paramètres URL
 const params = new URLSearchParams(window.location.search);
+
+// Gradient (couleur 1 + couleur 2 = filler, waves = couleur 2)
+let gradient = { c1: "#ad7d22", c2: "#ffb74a" };
+if (params.has("gradient")) {
+    try {
+        gradient = JSON.parse(decodeURIComponent(params.get("gradient")));
+    } catch (e) {
+        console.error("Erreur parsing gradient:", e);
+    }
+}
+
+// Options (ex: hideWaves)
+let options = { hideWaves: false };
+if (params.has("options")) {
+    try {
+        options = JSON.parse(decodeURIComponent(params.get("options")));
+    } catch (e) {
+        console.error("Erreur parsing options:", e);
+    }
+}
+
+// Titre final une fois tous les paliers atteints
+const finalTitle = params.has("finalTitle")
+    ? decodeURIComponent(params.get("finalTitle"))
+    : "";
+
 
 if (params.has("levels")) {
     try {
@@ -62,6 +91,24 @@ if (params.has("startPoints")) {
     currentPoints = parseFloat(params.get("startPoints")) || 0;
     console.log("Points de départ définis à :", currentPoints);
 }
+
+// Appliquer le gradient et les options d'affichage
+goalFill.style.background =
+    `linear-gradient(90deg, ${gradient.c1} 0%, ${gradient.c2} 100%)`;
+
+// Couleur des waves = 2e couleur du gradient
+wave1.style.backgroundColor = gradient.c2;
+wave2.style.backgroundColor = gradient.c2;
+
+// Masquer / afficher les waves
+if (options.hideWaves) {
+    wave1.style.display = "none";
+    wave2.style.display = "none";
+} else {
+    wave1.style.display = "block";
+    wave2.style.display = "block";
+}
+
 
 updateBar();
 
@@ -143,7 +190,10 @@ function updateBar() {
         const rawProgress = (currentPoints / lastThreshold) * 100;
         const clampedWidth = Math.min(rawProgress, 100);
 
-        goalTitle.textContent = "Tous les paliers atteints !";
+        goalTitle.textContent = finalTitle.trim() !== ""
+            ? finalTitle
+            : "Tous les paliers atteints !";
+
 
         animateValue(
             goalProgressText,

@@ -62,7 +62,7 @@ body {
     transform: translateX(-50%);
     background: #eba941;
     border-radius: 50%;
-    animation: wave 0.5s ease-in-out infinite alternate;
+    animation: wave 0.5s ease-in-out infinite alternate, pulse 2s linear infinite alternate;
     transition: ease left 0.5s;
 
 }
@@ -77,7 +77,7 @@ body {
     transform: translateX(-50%);
     background: #eba941;
     border-radius: 50%;
-    animation: wave 0.5s ease-in-out infinite alternate;
+    animation: wave 0.5s ease-in-out infinite alternate, pulse 2s linear infinite alternate;
     animation-delay: -80ms;
     transition: ease left 0.5s;
 }
@@ -102,6 +102,7 @@ body {
   background-size: 400% 400%;
   border-radius: var(--border-radius);
   transition: ease width 0.5s;
+  animation: pulse 2s linear infinite alternate;
 
   /* animation: pulse 5s linear infinite; */
 }
@@ -109,10 +110,10 @@ body {
 /* Animation douce de la barre */
 @keyframes pulse {
     0% {
-        background-position: 100% 0%
+        filter: brightness(90%); ;
     }
     100% {
-        background-position: 15% 100%
+        filter: brightness(120%);
     }
 }
 

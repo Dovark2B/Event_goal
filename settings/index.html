@@ -92,6 +92,86 @@
       max-width: 95vw;
     }
 
+    #preview-container {
+      width: 100%;
+      max-width: 550px;
+      margin-top: 10px;
+    }
+
+    #preview-bar {
+      width: 100%;
+      height: 25px;
+      background-color: rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #preview-pulse-wrapper {
+      position: absolute;
+      inset: 0;
+      animation: pulse 2s linear infinite alternate;
+    }
+
+    /* fill à 50% + pulse */
+    #preview-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 50%;
+      /* 50% fixé pour l’aperçu */
+      border-radius: 10px;
+      background: linear-gradient(90deg, #ad7d22 0%, #ffb74a 100%);  
+      z-index: 2;
+    }
+
+    /* waves d’aperçu, calquées sur wave1/wave2 réels */
+    #preview-wave1,
+    #preview-wave2 {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      width: 40px;
+      height: 50px;
+      left: 50%;
+      background: #ffb74a;
+      border-radius: 50%;
+      animation: wave 0.5s ease-in-out infinite alternate;
+      transition: ease left 0.5s;
+    }
+
+    #preview-wave1 {
+      top: -60%;
+    }
+
+    #preview-wave2 {
+      top: -10%;
+      animation-delay: -80ms;
+    }
+
+    /* mêmes keyframes que l’overlay */
+    @keyframes wave {
+      0% {
+        transform: translateX(-80%);
+      }
+
+      100% {
+        transform: translateX(-60%);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        filter: brightness(90%);
+      }
+
+      100% {
+        filter: brightness(120%);
+      }
+    }
+
+
     #msg {
       margin-top: 0.5em;
     }
@@ -103,6 +183,12 @@
   <h2>Configurer le Sub/Donation Goal</h2>
 
   <form id="settingsForm">
+    <h3>Texte une fois le goal final atteint</h3>
+    <div class="conversion">
+      <label>Titre final affiché :
+        <input type="text" id="finalTitleInput" placeholder="Ex : Merci pour la thune !">
+      </label>
+    </div>
     <h3>Paliers</h3>
     <div id="levels-container"></div>
     <button type="button" id="addLevel">+ Ajouter un palier</button>
@@ -122,6 +208,24 @@
       </label>
     </div>
 
+    <h3>Options d’affichage</h3>
+    <div class="conversion">
+      <label>
+        <input type="checkbox" id="hideWavesInput">
+        Cacher les animations de vagues
+      </label>
+    </div>
+
+    <h3>Couleurs du dégradé</h3>
+    <div class="conversion">
+      <label>Couleur 1 (début) :
+        <input type="color" id="gradientColor1Input" value="#ad7d22">
+      </label>
+      <label>Couleur 2 (fin / waves) :
+        <input type="color" id="gradientColor2Input" value="#ffb74a">
+      </label>
+    </div>
+
     <button type="submit">Générer le lien</button>
   </form>
 
@@ -129,11 +233,58 @@
   <div id="msg"></div>
   <a id="link" href="#" target="_blank"></a>
 
+  <h3>Aperçu (50%)</h3>
+  <div id="preview-container">
+    <div id="preview-bar">
+      <div id="preview-pulse-wrapper">
+        <div id="preview-wave1"></div>
+        <div id="preview-wave2"></div>
+        <div id="preview-fill"></div>
+      </div>
+    </div>
+  </div>
+
+
+
   <script>
     const levelsContainer = document.getElementById("levels-container");
     const addButton = document.getElementById("addLevel");
     const linkEl = document.getElementById("link");
     const msgEl = document.getElementById("msg");
+
+    const gradientColor1Input = document.getElementById("gradientColor1Input");
+    const gradientColor2Input = document.getElementById("gradientColor2Input");
+    const hideWavesInput = document.getElementById("hideWavesInput");
+    const finalTitleInput = document.getElementById("finalTitleInput");
+
+    const previewFill = document.getElementById("preview-fill");
+    const previewWave1 = document.getElementById("preview-wave1");
+    const previewWave2 = document.getElementById("preview-wave2");
+
+    function updatePreview() {
+      const c1 = gradientColor1Input.value || "#ad7d22";
+      const c2 = gradientColor2Input.value || "#ffb74a";
+
+      // Filler = gradient entre c1 et c2
+      previewFill.style.background = `linear-gradient(90deg, ${c1} 0%, ${c2} 100%)`;
+
+      // Waves = deuxième couleur du filler
+      previewWave1.style.backgroundColor = c2;
+      previewWave2.style.backgroundColor = c2;
+
+      // Affichage / masquage des waves
+      const hide = hideWavesInput.checked;
+      previewWave1.style.display = hide ? "none" : "block";
+      previewWave2.style.display = hide ? "none" : "block";
+    }
+
+    // Écoute les changements
+    gradientColor1Input.addEventListener("input", updatePreview);
+    gradientColor2Input.addEventListener("input", updatePreview);
+    hideWavesInput.addEventListener("change", updatePreview);
+
+    // Init au chargement
+    updatePreview();
 
     let levels = [
       { name: "Palier 1 : Décollage", target: 100 },
@@ -203,13 +354,26 @@
       };
 
       const startPoints = parseFloat(document.getElementById("startPointsInput").value) || 0;
+      const finalTitle = finalTitleInput.value || "";
 
       const encodedLevels = encodeURIComponent(JSON.stringify(levels));
       const encodedPoints = encodeURIComponent(JSON.stringify(points));
+      const gradient = {
+        c1: gradientColor1Input.value || "#ad7d22",
+        c2: gradientColor2Input.value || "#ffb74a"
+      };
+
+      const options = {
+        hideWaves: hideWavesInput.checked
+      };
+
+      const encodedGradient = encodeURIComponent(JSON.stringify(gradient));
+      const encodedOptions = encodeURIComponent(JSON.stringify(options));
+      const encodedFinalTitle = encodeURIComponent(finalTitle);
 
       let base = window.location.origin + window.location.pathname;
       base = base.replace(/settings\/index\.html$/, '').replace(/settings\/$/, '');
-      const url = `${base}?levels=${encodedLevels}&points=${encodedPoints}&startPoints=${startPoints}`;
+      const url = `${base}?levels=${encodedLevels}&points=${encodedPoints}&startPoints=${startPoints}&gradient=${encodedGradient}&options=${encodedOptions}&finalTitle=${encodedFinalTitle}`;
 
       linkEl.href = url;
       linkEl.textContent = url;
