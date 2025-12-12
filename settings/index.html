@@ -318,8 +318,13 @@
     levelsContainer.addEventListener("input", (e) => {
       const i = e.target.dataset.index;
       const field = e.target.dataset.field;
-      levels[i][field] = e.target.value;
+      if (field === "target") {
+          levels[i][field] = parseFloat(e.target.value);
+      } else {
+          levels[i][field] = e.target.value;
+      }
     });
+
 
     // Suppression des paliers
     levelsContainer.addEventListener("click", (e) => {
