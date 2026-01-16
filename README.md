@@ -28,7 +28,7 @@ Event Goal est un overlay HTML/CSS/JS pour suivre un objectif de stream basé su
 
 - Streamer.bot installé et configuré (serveur WebSocket activé).
 - Hébergement statique pour l’overlay (par exemple GitHub Pages).  
-- OBS (ou autre logiciel de stream) capable d’afficher une source navigateur.
+- OBS Studio >=32.0.4
 
 ## Installation / URLs
 
