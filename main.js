@@ -1,25 +1,45 @@
-// Extraction de la config overlay depuis l'URL (optionnel)
+// === PERSISTENCE AVEC LOCALSTORAGE ===
+const STORAGE_KEYS = {
+    CURRENT_POINTS: 'subGoal_currentPoints',
+    CURRENT_LEVEL: 'subGoal_currentLevel',
+    LEVELS: 'subGoal_levels',
+    POINTS_CONFIG: 'subGoal_pointsConfig',
+    GRADIENT: 'subGoal_gradient',
+    OPTIONS: 'subGoal_options',
+    FINAL_TITLE: 'subGoal_finalTitle'
+};
+
+// Extraction uniquement de l'adresse Streamerbot (optionnel)
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
-
 const sbServerAddress = urlParams.get("address") || "127.0.0.1";
 const sbServerPort = urlParams.get("port") || "8080";
 
-// Paramètres des points
-const GOAL_SETTINGS = {
+// Valeurs par défaut (utilisées seulement si localStorage vide)
+const DEFAULT_SETTINGS = {
     levels: [
         { name: "Palier 1 : Décollage !", target: 100 },
-        { name: "Palier 2 : Propulsion !", target: 300 },
-        { name: "Palier 3 : Orbite atteinte !", target: 600 }
+        { name: "Palier 2 : Propulsion !", target: 300 }
     ],
     points: {
-        bits: 1,        // 100 bits = 1 point
-        sub: 2,         // 1 sub = 2 points
-        donation: 1     // 1 € = 1 point
-    }
+        bits: 1,
+        sub: 2,
+        donation: 1
+    },
+    gradient: { c1: "#ad7d22", c2: "#ffb74a" },
+    options: { hideWaves: false },
+    finalTitle: ""
+};
+
+let GOAL_SETTINGS = {
+    levels: [...DEFAULT_SETTINGS.levels],
+    points: { ...DEFAULT_SETTINGS.points }
 };
 let currentPoints = 0;
 let currentLevel = 0;
+let gradient = { ...DEFAULT_SETTINGS.gradient };
+let options = { ...DEFAULT_SETTINGS.options };
+let finalTitle = DEFAULT_SETTINGS.finalTitle;
 
 let lastProgressDisplay = 0;
 let lastPointsDisplay = 0;
@@ -32,89 +52,137 @@ const goalTargetText = document.getElementById("goal-target");
 const wave1 = document.getElementById("wave1");
 const wave2 = document.getElementById("wave2");
 
+// === FONCTIONS DE PERSISTENCE ===
 
-// MAJ paramètres depuis l'URL
-// Lecture des paramètres URL
-const params = new URLSearchParams(window.location.search);
-
-// Gradient (couleur 1 + couleur 2 = filler, waves = couleur 2)
-let gradient = { c1: "#ad7d22", c2: "#ffb74a" };
-if (params.has("gradient")) {
+// Sauvegarde la progression
+function saveProgress() {
     try {
-        gradient = JSON.parse(decodeURIComponent(params.get("gradient")));
+        localStorage.setItem(STORAGE_KEYS.CURRENT_POINTS, currentPoints);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_LEVEL, currentLevel);
+        console.log(`💾 Progression sauvegardée: ${currentPoints.toFixed(2)} pts, Niveau ${currentLevel}`);
     } catch (e) {
-        console.error("Erreur parsing gradient:", e);
+        console.error("Erreur sauvegarde:", e);
     }
 }
 
-// Options (ex: hideWaves)
-let options = { hideWaves: false };
-if (params.has("options")) {
+// Charge la progression
+function loadProgress() {
     try {
-        options = JSON.parse(decodeURIComponent(params.get("options")));
-    } catch (e) {
-        console.error("Erreur parsing options:", e);
-    }
-}
-
-// Titre final une fois tous les paliers atteints
-const finalTitle = params.has("finalTitle")
-    ? decodeURIComponent(params.get("finalTitle"))
-    : "";
-
-
-if (params.has("levels")) {
-    try {
-        const parsedLevels = JSON.parse(decodeURIComponent(params.get("levels")));
-
-        // NOUVEAU : Validation - chaque palier doit être >= au précédent
-        for (let i = 1; i < parsedLevels.length; i++) {
-            if (parsedLevels[i].target < parsedLevels[i - 1].target) {
-                console.warn(`⚠️ Palier ${i + 1} (${parsedLevels[i].target}) est inférieur au Palier ${i} (${parsedLevels[i - 1].target}). Correction appliquée.`);
-                parsedLevels[i].target = parsedLevels[i - 1].target;
-            }
+        const savedPoints = localStorage.getItem(STORAGE_KEYS.CURRENT_POINTS);
+        const savedLevel = localStorage.getItem(STORAGE_KEYS.CURRENT_LEVEL);
+        
+        if (savedPoints !== null) {
+            currentPoints = parseFloat(savedPoints) || 0;
+            console.log(`📥 Points chargés: ${currentPoints}`);
         }
-
-        GOAL_SETTINGS.levels = parsedLevels;
+        
+        if (savedLevel !== null) {
+            currentLevel = parseInt(savedLevel) || 0;
+            console.log(`📥 Niveau chargé: ${currentLevel}`);
+        }
     } catch (e) {
-        console.error("Erreur parsing levels:", e);
+        console.warn("Erreur chargement progression:", e);
     }
 }
-if (params.has("points")) {
+
+// Sauvegarde toute la configuration
+function saveConfig() {
     try {
-        GOAL_SETTINGS.points = JSON.parse(decodeURIComponent(params.get("points")));
-    } catch (e) { console.error("Erreur lecture points:", e); }
+        localStorage.setItem(STORAGE_KEYS.LEVELS, JSON.stringify(GOAL_SETTINGS.levels));
+        localStorage.setItem(STORAGE_KEYS.POINTS_CONFIG, JSON.stringify(GOAL_SETTINGS.points));
+        localStorage.setItem(STORAGE_KEYS.GRADIENT, JSON.stringify(gradient));
+        localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify(options));
+        localStorage.setItem(STORAGE_KEYS.FINAL_TITLE, finalTitle);
+        console.log("💾 Configuration sauvegardée");
+    } catch (e) {
+        console.error("Erreur sauvegarde config:", e);
+    }
 }
 
-// NOUVEAU : Points de départ
-if (params.has("startPoints")) {
-    currentPoints = parseFloat(params.get("startPoints")) || 0;
-    console.log("Points de départ définis à :", currentPoints);
+// Charge toute la configuration
+function loadConfig() {
+    try {
+        let hasData = false;
+        
+        // Charger les paliers
+        const savedLevels = localStorage.getItem(STORAGE_KEYS.LEVELS);
+        if (savedLevels) {
+            GOAL_SETTINGS.levels = JSON.parse(savedLevels);
+            console.log("📥 Paliers chargés:", GOAL_SETTINGS.levels);
+            hasData = true;
+        }
+        
+        // Charger la config des points
+        const savedPoints = localStorage.getItem(STORAGE_KEYS.POINTS_CONFIG);
+        if (savedPoints) {
+            GOAL_SETTINGS.points = JSON.parse(savedPoints);
+            console.log("📥 Config points chargée:", GOAL_SETTINGS.points);
+            hasData = true;
+        }
+        
+        // Charger le gradient
+        const savedGradient = localStorage.getItem(STORAGE_KEYS.GRADIENT);
+        if (savedGradient) {
+            gradient = JSON.parse(savedGradient);
+            console.log("📥 Gradient chargé:", gradient);
+            hasData = true;
+        }
+        
+        // Charger les options
+        const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
+        if (savedOptions) {
+            options = JSON.parse(savedOptions);
+            console.log("📥 Options chargées:", options);
+            hasData = true;
+        }
+        
+        // Charger le titre final
+        const savedFinalTitle = localStorage.getItem(STORAGE_KEYS.FINAL_TITLE);
+        if (savedFinalTitle !== null) {
+            finalTitle = savedFinalTitle;
+            console.log("📥 Titre final chargé:", finalTitle);
+            hasData = true;
+        }
+        
+        return hasData;
+    } catch (e) {
+        console.warn("Erreur chargement config:", e);
+        return false;
+    }
 }
 
-// Appliquer le gradient et les options d'affichage
-goalFill.style.background =
-    `linear-gradient(90deg, ${gradient.c1} 0%, ${gradient.c2} 100%)`;
+// Écoute les changements depuis la page Settings
+window.addEventListener('storage', (e) => {
+    if (e.key && e.key.startsWith('subGoal_')) {
+        console.log("🔄 Changement détecté depuis Settings:", e.key);
+        
+        // Recharger toute la config
+        loadConfig();
+        loadProgress();
+        
+        // Réappliquer le gradient et les options
+        goalFill.style.background = `linear-gradient(90deg, ${gradient.c1} 0%, ${gradient.c2} 100%)`;
+        wave1.style.backgroundColor = gradient.c2;
+        wave2.style.backgroundColor = gradient.c2;
+        
+        if (options.hideWaves) {
+            wave1.style.display = "none";
+            wave2.style.display = "none";
+        } else {
+            wave1.style.display = "block";
+            wave2.style.display = "block";
+        }
+        
+        updateBar();
+    }
+});
 
-// Couleur des waves = 2e couleur du gradient
-wave1.style.backgroundColor = gradient.c2;
-wave2.style.backgroundColor = gradient.c2;
+// === FONCTIONS DE LOGIQUE MÉTIER ===
 
-// Masquer / afficher les waves
-if (options.hideWaves) {
-    wave1.style.display = "none";
-    wave2.style.display = "none";
-} else {
-    wave1.style.display = "block";
-    wave2.style.display = "block";
-}
-
-
-updateBar();
-
-// Retourne le jalon absolu du niveau (on n'additionne plus)
+// Retourne le jalon absolu du niveau
 function getGoalThreshold(level) {
     if (level < 0) return 0;
+    if (level >= GOAL_SETTINGS.levels.length) return GOAL_SETTINGS.levels[GOAL_SETTINGS.levels.length - 1].target;
     return GOAL_SETTINGS.levels[level].target;
 }
 
@@ -140,13 +208,12 @@ async function addPoints(pts) {
         currentPoints >= getGoalThreshold(currentLevel)
     ) {
         updateBar();
-        await sleep(300); // Pause avant d'annoncer le nouveau palier
-
+        await sleep(300);
         advanceLevel();
     }
 
     updateBar();
-    // saveProgress();
+    saveProgress(); // ✅ Sauvegarde automatique
 }
 
 function animateValue(element, start, end, duration, formatter) {
@@ -154,7 +221,7 @@ function animateValue(element, start, end, duration, formatter) {
 
     function frame(now) {
         const elapsed = now - startTime;
-        const t = Math.min(elapsed / duration, 1); // 0 → 1
+        const t = Math.min(elapsed / duration, 1);
         const value = start + (end - start) * t;
 
         element.textContent = formatter(value);
@@ -167,7 +234,6 @@ function animateValue(element, start, end, duration, formatter) {
     requestAnimationFrame(frame);
 }
 
-
 function advanceLevel() {
     if (currentLevel + 1 < GOAL_SETTINGS.levels.length) {
         currentLevel++;
@@ -176,16 +242,12 @@ function advanceLevel() {
         console.log("Tous les paliers sont atteints !");
         currentLevel = GOAL_SETTINGS.levels.length;
     }
-
 }
-
-
 
 function updateBar() {
     const lastIndex = GOAL_SETTINGS.levels.length - 1;
 
     if (currentLevel >= GOAL_SETTINGS.levels.length) {
-
         const lastThreshold = getGoalThreshold(lastIndex);
         const rawProgress = (currentPoints / lastThreshold) * 100;
         const clampedWidth = Math.min(rawProgress, 100);
@@ -193,7 +255,6 @@ function updateBar() {
         goalTitle.textContent = finalTitle.trim() !== ""
             ? finalTitle
             : "Tous les paliers atteints !";
-
 
         animateValue(
             goalProgressText,
@@ -241,7 +302,6 @@ function updateBar() {
     );
     lastProgressDisplay = progress;
 
-
     animateValue(
         currentPointsText,
         lastPointsDisplay,
@@ -255,12 +315,39 @@ function updateBar() {
     goalFill.style.width = `${Math.min(progress, 100)}%`;
     wave1.style.left = `${Math.min(progress, 100)}%`;
     wave2.style.left = `${Math.min(progress, 100)}%`;
-
 }
 
+// === INITIALISATION ===
+function initialize() {
+    console.log("📂 Chargement depuis localStorage...");
+    
+    const hasData = loadConfig();
+    
+    // Si aucune donnée, initialiser avec les valeurs par défaut
+    if (!hasData) {
+        console.log("🆕 Première utilisation - Initialisation avec valeurs par défaut...");
+        saveConfig();
+    }
+    
+    loadProgress();
+    
+    // Appliquer le gradient et les options
+    goalFill.style.background = `linear-gradient(90deg, ${gradient.c1} 0%, ${gradient.c2} 100%)`;
+    wave1.style.backgroundColor = gradient.c2;
+    wave2.style.backgroundColor = gradient.c2;
+    
+    if (options.hideWaves) {
+        wave1.style.display = "none";
+        wave2.style.display = "none";
+    } else {
+        wave1.style.display = "block";
+        wave2.style.display = "block";
+    }
+    
+    updateBar();
+}
 
-
-// === LOGIQUE MODERNE AVEC EVENTS NATIFS ===
+// === CONNEXION STREAMERBOT ===
 const client = new StreamerbotClient({
     host: sbServerAddress,
     port: sbServerPort,
@@ -274,7 +361,7 @@ client.on('Twitch.Sub', (response) => {
     addPoints(GOAL_SETTINGS.points.sub);
 });
 
-// TWITCH RESUB (si tu veux le compter pareil que Sub)
+// TWITCH RESUB
 client.on('Twitch.ReSub', (response) => {
     console.log("Event Twitch.ReSub :", response.data);
     addPoints(GOAL_SETTINGS.points.sub);
@@ -284,23 +371,18 @@ client.on('Twitch.ReSub', (response) => {
 client.on('Twitch.GiftSub', (response) => {
     console.log("Event Twitch.GiftSub :", response.data);
 
-    // subTier : "1000" (Tier 1), "2000" (Tier 2), "3000" (Tier 3)
     const tier = String(response.data.subTier || '');
-    let points = GOAL_SETTINGS.points.sub; // Default Tier 1 = 3 dans tes paramètres
+    let points = GOAL_SETTINGS.points.sub;
 
-    if (tier === '2000') points = 3;    // Tier 2
-    else if (tier === '3000') points = 4; // Tier 3
+    if (tier === '2000') points = 3;
+    else if (tier === '3000') points = 4;
 
-    // ✅ UN SEUL SUB PAR ÉVÉNEMENT, pas de multiplication
     console.log(`SubGift : tier = ${tier}, points = ${points}`);
     addPoints(points);
 });
 
-
-
 // TWITCH CHEER (BITS)
 client.on('Twitch.Cheer', (response) => {
-    // 'bits' entier natif, 100 bits = 1 point
     const bits = parseInt(response.data.bits, 10) || 0;
     const pts = parseFloat((bits * GOAL_SETTINGS.points.bits / 100).toFixed(2));
     console.log(`Event Twitch.Cheer : ${bits} bits => ${pts} points`);
@@ -347,44 +429,5 @@ client.on('TipeeeStream.Donation', (payload) => {
     }
 });
 
-
-
-// // TEST TRIGGERS
-// client.on('Raw.Action', (response) => {
-//    const args = response.data?.arguments;
-//    if (!args) return;
-
-//    // DONATION TEST
-//    if (args.triggerName === "Donation" && args.triggerCategory === "Integrations/TipeeeStream") {
-//        let amount = parseFloat(args.amount) || 0;
-//        if (args.currency === "USD") amount *= 0.95;
-//        addPoints(amount * GOAL_SETTINGS.points.donation);
-//        return;
-//    }
-
-//    // SUB TEST
-//    if (args.triggerName === "Subscription" && args.triggerCategory === "Twitch/Subscriptions") {
-//        addPoints(GOAL_SETTINGS.points.sub);
-//        return;
-//    }
-
-//    // GIFT SUB TEST
-//    if (args.triggerName === "Gift Subscription" && args.triggerCategory === "Twitch/Subscriptions") {
-//        let points = GOAL_SETTINGS.points.sub;
-//        const tier = String(args.tier || '').toLowerCase();
-//        if (tier.includes('2')) points = 3;
-//        if (tier.includes('3')) points = 4;
-//        addPoints(points);
-//        return;
-//    }
-
-//    // BITS TEST
-//    if (args.triggerName === "Cheer" && args.triggerCategory === "Twitch/Chat") {
-//        const bits = parseInt(args.bits, 10) || 0;
-//        const pts = parseFloat((bits * GOAL_SETTINGS.points.bits / 100).toFixed(2));
-//        console.log(`Ajout de points bits: ${bits} bits -> ${pts} pts`);
-//        addPoints(pts);
-//        return;
-//    }
-// });
-
+// ✅ Initialisation au chargement
+initialize();

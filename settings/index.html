@@ -65,6 +65,7 @@
       cursor: pointer;
       margin: 0.3em;
       transition: background 0.2s;
+      width: calc(100% - 0.6em);
     }
 
     button:hover {
@@ -75,21 +76,54 @@
       background: #d32f2f;
       color: white;
       margin-top: 0.5em;
-      width: 100%;
     }
 
     button.deleteBtn:hover {
       background: #f44336;
     }
 
-    #link {
-      display: none;
-      background: #333;
-      padding: 0.6em;
-      border-radius: 5px;
+    button.secondary {
+      background: #4a90e2;
       color: white;
-      word-break: break-all;
-      max-width: 95vw;
+    }
+
+    button.secondary:hover {
+      background: #6aa8f5;
+    }
+
+    button.warning {
+      background: #ff9800;
+      color: white;
+    }
+
+    button.warning:hover {
+      background: #ffa726;
+    }
+
+    #current-status {
+      width: 100%;
+      max-width: 550px;
+      background: #232323;
+      padding: 1.5em;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px #0006;
+      margin-bottom: 1em;
+      display: none;
+    }
+
+    #current-status h4 {
+      margin-top: 0;
+      color: #ffd75e;
+    }
+
+    #current-status p {
+      margin: 0.5em 0;
+      color: #fff;
+    }
+
+    #current-status span {
+      color: #ffd75e;
+      font-weight: bold;
     }
 
     #preview-container {
@@ -113,20 +147,17 @@
       animation: pulse 2s linear infinite alternate;
     }
 
-    /* fill à 50% + pulse */
     #preview-fill {
       position: absolute;
       left: 0;
       top: 0;
       height: 100%;
       width: 50%;
-      /* 50% fixé pour l’aperçu */
       border-radius: 10px;
-      background: linear-gradient(90deg, #ad7d22 0%, #ffb74a 100%);  
+      background: linear-gradient(90deg, #ad7d22 0%, #ffb74a 100%);
       z-index: 2;
     }
 
-    /* waves d’aperçu, calquées sur wave1/wave2 réels */
     #preview-wave1,
     #preview-wave2 {
       position: absolute;
@@ -150,7 +181,6 @@
       animation-delay: -80ms;
     }
 
-    /* mêmes keyframes que l’overlay */
     @keyframes wave {
       0% {
         transform: translateX(-80%);
@@ -171,9 +201,29 @@
       }
     }
 
-
     #msg {
       margin-top: 0.5em;
+      padding: 1em;
+      border-radius: 5px;
+      display: none;
+    }
+
+    #msg.success {
+      background: #4caf50;
+      color: white;
+      display: block;
+    }
+
+    #msg.error {
+      background: #f44336;
+      color: white;
+      display: block;
+    }
+
+    #msg.warning {
+      background: #ff9800;
+      color: white;
+      display: block;
     }
   </style>
 </head>
@@ -182,6 +232,14 @@
 
   <h2>Configurer le Sub/Donation Goal</h2>
 
+  <!-- État actuel -->
+  <div id="current-status">
+    <h4>📊 État actuel de l'overlay :</h4>
+    <p>Points actuels : <span id="statusPoints">0</span> pts</p>
+    <p>Niveau actuel : <span id="statusLevel">0</span></p>
+    <p>Palier en cours : <span id="statusLevelName">-</span></p>
+  </div>
+
   <form id="settingsForm">
     <h3>Texte une fois le goal final atteint</h3>
     <div class="conversion">
@@ -189,6 +247,7 @@
         <input type="text" id="finalTitleInput" placeholder="Ex : Merci pour la thune !">
       </label>
     </div>
+
     <h3>Paliers</h3>
     <div id="levels-container"></div>
     <button type="button" id="addLevel">+ Ajouter un palier</button>
@@ -200,15 +259,14 @@
       <label>1€ de don = <input type="number" id="donInput" min="0" step="0.1" value="1"> points</label>
     </div>
 
-    <!-- NOUVEAU : Points de départ -->
-    <h3>Configuration initiale</h3>
+    <h3>Points de départ (pour réinitialisation)</h3>
     <div class="conversion">
       <label>Points de départ :
         <input type="number" id="startPointsInput" min="0" step="0.01" value="0" placeholder="Ex: 50.00">
       </label>
     </div>
 
-    <h3>Options d’affichage</h3>
+    <h3>Options d'affichage</h3>
     <div class="conversion">
       <label>
         <input type="checkbox" id="hideWavesInput">
@@ -226,12 +284,15 @@
       </label>
     </div>
 
-    <button type="submit">Générer le lien</button>
+    <h3>Actions</h3>
+    <div class="conversion">
+      <button type="button" id="loadCurrentBtn" class="secondary">📥 Charger les valeurs actuelles</button>
+      <button type="submit">✅ Appliquer la configuration</button>
+      <button type="button" id="resetProgressBtn" class="warning">🔄 Réinitialiser la progression</button>
+    </div>
   </form>
 
-  <button id="copyBtn" style="display:none;">Copier le lien</button>
   <div id="msg"></div>
-  <a id="link" href="#" target="_blank"></a>
 
   <h3>Aperçu (50%)</h3>
   <div id="preview-container">
@@ -244,12 +305,19 @@
     </div>
   </div>
 
-
-
   <script>
+    const STORAGE_KEYS = {
+      CURRENT_POINTS: 'subGoal_currentPoints',
+      CURRENT_LEVEL: 'subGoal_currentLevel',
+      LEVELS: 'subGoal_levels',
+      POINTS_CONFIG: 'subGoal_pointsConfig',
+      GRADIENT: 'subGoal_gradient',
+      OPTIONS: 'subGoal_options',
+      FINAL_TITLE: 'subGoal_finalTitle'
+    };
+
     const levelsContainer = document.getElementById("levels-container");
     const addButton = document.getElementById("addLevel");
-    const linkEl = document.getElementById("link");
     const msgEl = document.getElementById("msg");
 
     const gradientColor1Input = document.getElementById("gradientColor1Input");
@@ -261,29 +329,32 @@
     const previewWave1 = document.getElementById("preview-wave1");
     const previewWave2 = document.getElementById("preview-wave2");
 
+    function showMessage(text, type = 'success') {
+      msgEl.textContent = text;
+      msgEl.className = type;
+      setTimeout(() => {
+        msgEl.style.display = 'none';
+        msgEl.className = '';
+      }, 5000);
+    }
+
     function updatePreview() {
       const c1 = gradientColor1Input.value || "#ad7d22";
       const c2 = gradientColor2Input.value || "#ffb74a";
 
-      // Filler = gradient entre c1 et c2
       previewFill.style.background = `linear-gradient(90deg, ${c1} 0%, ${c2} 100%)`;
-
-      // Waves = deuxième couleur du filler
       previewWave1.style.backgroundColor = c2;
       previewWave2.style.backgroundColor = c2;
 
-      // Affichage / masquage des waves
       const hide = hideWavesInput.checked;
       previewWave1.style.display = hide ? "none" : "block";
       previewWave2.style.display = hide ? "none" : "block";
     }
 
-    // Écoute les changements
     gradientColor1Input.addEventListener("input", updatePreview);
     gradientColor2Input.addEventListener("input", updatePreview);
     hideWavesInput.addEventListener("change", updatePreview);
 
-    // Init au chargement
     updatePreview();
 
     let levels = [
@@ -291,7 +362,6 @@
       { name: "Palier 2 : Propulsion", target: 300 }
     ];
 
-    // ---- GÉNÉRATION DES INPUTS DES PALIERS ----
     function renderLevels() {
       levelsContainer.innerHTML = "";
       levels.forEach((lvl, i) => {
@@ -318,10 +388,13 @@
     levelsContainer.addEventListener("input", (e) => {
       const i = e.target.dataset.index;
       const field = e.target.dataset.field;
-      levels[i][field] = e.target.value;
+      if (field === "target") {
+        levels[i][field] = parseFloat(e.target.value) || 0;
+      } else {
+        levels[i][field] = e.target.value;
+      }
     });
 
-    // Suppression des paliers
     levelsContainer.addEventListener("click", (e) => {
       if (e.target.classList.contains("deleteBtn")) {
         const index = parseInt(e.target.dataset.index);
@@ -329,68 +402,130 @@
           levels.splice(index, 1);
           renderLevels();
         } else {
-          alert(" Vous devez garder au moins 1 palier !");
+          alert("⚠️ Vous devez garder au moins 1 palier !");
         }
       }
     });
 
-    // ---- GÉNÉRATION DU LIEN ----
+    // Charger les valeurs actuelles
+    document.getElementById("loadCurrentBtn").onclick = () => {
+      try {
+        const currentPoints = parseFloat(localStorage.getItem(STORAGE_KEYS.CURRENT_POINTS)) || 0;
+        const currentLevel = parseInt(localStorage.getItem(STORAGE_KEYS.CURRENT_LEVEL)) || 0;
+
+        document.getElementById("statusPoints").textContent = currentPoints.toFixed(2);
+        document.getElementById("statusLevel").textContent = currentLevel;
+
+        // Charger la config existante
+        const savedLevels = localStorage.getItem(STORAGE_KEYS.LEVELS);
+        if (savedLevels) {
+          levels = JSON.parse(savedLevels);
+          renderLevels();
+          
+          // Afficher le nom du palier en cours
+          if (currentLevel < levels.length) {
+            document.getElementById("statusLevelName").textContent = levels[currentLevel].name;
+          } else {
+            document.getElementById("statusLevelName").textContent = "Tous les paliers atteints !";
+          }
+        }
+
+        const savedPoints = localStorage.getItem(STORAGE_KEYS.POINTS_CONFIG);
+        if (savedPoints) {
+          const pts = JSON.parse(savedPoints);
+          document.getElementById("bitsInput").value = pts.bits;
+          document.getElementById("subsInput").value = pts.sub;
+          document.getElementById("donInput").value = pts.donation;
+        }
+
+        const savedGradient = localStorage.getItem(STORAGE_KEYS.GRADIENT);
+        if (savedGradient) {
+          const grad = JSON.parse(savedGradient);
+          gradientColor1Input.value = grad.c1;
+          gradientColor2Input.value = grad.c2;
+          updatePreview();
+        }
+
+        const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
+        if (savedOptions) {
+          const opts = JSON.parse(savedOptions);
+          hideWavesInput.checked = opts.hideWaves;
+          updatePreview();
+        }
+
+        const savedFinalTitle = localStorage.getItem(STORAGE_KEYS.FINAL_TITLE);
+        if (savedFinalTitle) {
+          finalTitleInput.value = savedFinalTitle;
+        }
+
+        document.getElementById("current-status").style.display = "block";
+        showMessage("✅ Valeurs actuelles chargées !", "success");
+      } catch (e) {
+        showMessage("❌ Erreur lors du chargement", "error");
+        console.error(e);
+      }
+    };
+
+    // Appliquer la configuration
     document.getElementById("settingsForm").onsubmit = (e) => {
       e.preventDefault();
 
       // Validation des paliers
       for (let i = 1; i < levels.length; i++) {
         if (levels[i].target < levels[i - 1].target) {
-          msgEl.textContent = ` Erreur : Palier ${i + 1} (${levels[i].target}) doit être >= Palier ${i} (${levels[i - 1].target})`;
-          msgEl.style.color = "red";
+          showMessage(`⚠️ Erreur : Palier ${i + 1} (${levels[i].target}) doit être >= Palier ${i} (${levels[i - 1].target})`, "error");
           return;
         }
       }
 
-      const points = {
-        bits: parseFloat(document.getElementById("bitsInput").value),
-        sub: parseFloat(document.getElementById("subsInput").value),
-        donation: parseFloat(document.getElementById("donInput").value)
-      };
+      try {
+        // Sauvegarder les paliers
+        localStorage.setItem(STORAGE_KEYS.LEVELS, JSON.stringify(levels));
 
-      const startPoints = parseFloat(document.getElementById("startPointsInput").value) || 0;
-      const finalTitle = finalTitleInput.value || "";
+        // Sauvegarder la config des points
+        const points = {
+          bits: parseFloat(document.getElementById("bitsInput").value),
+          sub: parseFloat(document.getElementById("subsInput").value),
+          donation: parseFloat(document.getElementById("donInput").value)
+        };
+        localStorage.setItem(STORAGE_KEYS.POINTS_CONFIG, JSON.stringify(points));
 
-      const encodedLevels = encodeURIComponent(JSON.stringify(levels));
-      const encodedPoints = encodeURIComponent(JSON.stringify(points));
-      const gradient = {
-        c1: gradientColor1Input.value || "#ad7d22",
-        c2: gradientColor2Input.value || "#ffb74a"
-      };
+        // Sauvegarder le gradient
+        const gradient = {
+          c1: gradientColor1Input.value,
+          c2: gradientColor2Input.value
+        };
+        localStorage.setItem(STORAGE_KEYS.GRADIENT, JSON.stringify(gradient));
 
-      const options = {
-        hideWaves: hideWavesInput.checked
-      };
+        // Sauvegarder les options
+        const options = {
+          hideWaves: hideWavesInput.checked
+        };
+        localStorage.setItem(STORAGE_KEYS.OPTIONS, JSON.stringify(options));
 
-      const encodedGradient = encodeURIComponent(JSON.stringify(gradient));
-      const encodedOptions = encodeURIComponent(JSON.stringify(options));
-      const encodedFinalTitle = encodeURIComponent(finalTitle);
+        // Sauvegarder le titre final
+        localStorage.setItem(STORAGE_KEYS.FINAL_TITLE, finalTitleInput.value || "");
 
-      let base = window.location.origin + window.location.pathname;
-      base = base.replace(/settings\/index\.html$/, '').replace(/settings\/$/, '');
-      const url = `${base}?levels=${encodedLevels}&points=${encodedPoints}&startPoints=${startPoints}&gradient=${encodedGradient}&options=${encodedOptions}&finalTitle=${encodedFinalTitle}`;
-
-      linkEl.href = url;
-      linkEl.textContent = url;
-      linkEl.style.display = "block";
-      document.getElementById("copyBtn").style.display = "inline-block";
-      msgEl.textContent = "Copiez ce lien dans OBS ou votre navigateur !";
+        showMessage("✅ Configuration appliquée ! L'overlay se mettra à jour automatiquement.", "success");
+      } catch (e) {
+        showMessage("❌ Erreur lors de la sauvegarde", "error");
+        console.error(e);
+      }
     };
 
+    // Réinitialiser la progression
+    document.getElementById("resetProgressBtn").onclick = () => {
+      if (confirm("⚠️ Réinitialiser les points à la valeur de départ ?")) {
+        const startPoints = parseFloat(document.getElementById("startPointsInput").value) || 0;
 
-    // ---- BOUTON COPIE ----
-    document.getElementById("copyBtn").onclick = () => {
-      const text = linkEl.textContent;
-      navigator.clipboard.writeText(text).then(() => {
-        msgEl.textContent = "Lien copié !";
-      }).catch(() => {
-        msgEl.textContent = "Erreur lors de la copie.";
-      });
+        localStorage.setItem(STORAGE_KEYS.CURRENT_POINTS, startPoints);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_LEVEL, 0);
+
+        showMessage(`🔄 Progression réinitialisée à ${startPoints} points !`, "warning");
+
+        // Rafraîchir l'affichage
+        document.getElementById("loadCurrentBtn").click();
+      }
     };
 
     renderLevels();
