@@ -15,83 +15,123 @@ Event Goal est un overlay HTML/CSS/JS pour suivre un objectif de stream basé su
 - Paliers configurables (ex. 100 / 300 / 600 points) avec titre par palier.  
 - Agrégation de plusieurs sources d’events :
   - Twitch Sub / ReSub / Gift Sub  
-  - Twitch Cheer (bits → points)  
-  - Dons (Streamlabs, StreamElements, TipeeeStream)
+  - Twitch Cheer (bits)  
+  - Dons Streamlabs (pas testé) / StreamElements (non plus) / TipeeeStream  
 - Conversion configurable des events en points (bits, subs, dons).  
-- Configuration fine via paramètres d’URL (paliers, valeurs de points, points de départ).
+- Page de **settings** dédiée pour configurer :
+  - Paliers, conversions, couleurs, options d’affichage  
+  - Titre final une fois tous les paliers atteints  
+  - **Points de départ** (base de la barre, appliqués via un bouton de réinitialisation)  
+- **Mémoire locale** : la progression (points, niveau) est sauvegardée en localStorage et conservée entre les refresh, la fermeture d’OBS et les redémarrages du PC.
 
 ## Prérequis
 
-- Streamer.bot installé et configuré (WebSocket activé).
-- Un serveur d’overlay (celui de Streamer.bot, ou hébergement statique type GitHub Pages).  
-- OBS / logiciel de stream capable d’afficher une source navigateur.
+- Streamer.bot installé et configuré (serveur WebSocket activé).
+- Hébergement statique pour l’overlay (par exemple GitHub Pages).  
+- OBS (ou autre logiciel de stream) capable d’afficher une source navigateur.
 
-## Installation
+## Installation / URLs
 
-1. URL github Pages :
-https://dovark2b.github.io/Event_goal/settings
+### Utilisation via GitHub Pages
 
+- Page **Settings** :  
+  `https://dovark2b.github.io/Event_goal/settings/`  
+  Permet de configurer paliers, couleurs, conversions, options, et de gérer la progression.
+  À utiliser comme Dock personnalisé dans OBS.
 
+- Page **Overlay** :  
+  `https://dovark2b.github.io/Event_goal/`  
+  À utiliser comme **Source Navigateur** dans OBS.  
 
-2. Clone du dépôt :
+Les deux pages partagent le même localStorage car elles sont sur le même domaine, ce qui permet de synchroniser la configuration et la progression.
+
+### Utilisation en local
 
 ```bash
-git clone https://github.com/TON_USER/event_goal.git
-cd event_goal
+git clone https://github.com/dovark2b/Event_goal.git
+cd Event_goal
+# Servir le dossier avec un serveur statique (par ex. live-server, http-server, overlay SB, etc.)
 ```
 
-## Configuration
+Ensuite :
 
-L’overlay lit plusieurs paramètres dans l’URL donc pas de mémoire.
-Revient au paramètres de base a chaque refresh de la source.
+- `http://localhost:PORT/Event_goal/settings/` → page settings  
+- `http://localhost:PORT/Event_goal/` → overlay
 
+## Mémoire et progression
 
-### Exemple d’URL
+L’overlay ne dépend plus des paramètres d’URL pour sa configuration.  
+La mémoire et la config sont gérées via **localStorage** et la page settings.
+
+### Ce qui est sauvegardé
+
+Clés localStorage utilisées :
 
 ```text
-http://localhost:8080/?&levels=%5B%7B%22name%22%3A%22Palier%201%20%3A%20D%C3%A9collage
-%20!%22%2C%22target%22%3A100%7D%2C%7B%22name%22%3A%22Palier%202%20%3A%20Propulsion%20!
-%22%2C%22target%22%3A300%7D%2C%7B%22name%22%3A%22Palier%203%20%3A%20Orbite
-%20atteinte%20!%22%2C%22target%22%3A600%7D%5D&
-points=%7B%22bits%22%3A1%2C%22sub%22%3A2%2C%22donation%22%3A1%7D&startPoints=0
+subGoal_currentPoints   // points actuels
+subGoal_currentLevel    // niveau/palier actuel
+subGoal_levels          // liste des paliers
+subGoal_points          // config des conversions (bits/sub/don)
+subGoal_gradient        // couleurs du dégradé
+subGoal_options         // options d’affichage (hideWaves)
+subGoal_finalTitle      // texte final quand tous les paliers sont atteints
 ```
 
-Les structures attendues :
+Comportement :
 
-```json
-// levels
-[
-  { "name": "Palier 1 : Décollage !", "target": 100 },
-  { "name": "Palier 2 : Propulsion !", "target": 300 },
-  { "name": "Palier 3 : Orbite atteinte !", "target": 600 }
-]
+- À chaque event (sub, bits, don), l’overlay incrémente `currentPoints`, met à jour la barre et sauvegarde `currentPoints` + `currentLevel` dans localStorage.  
+- Au chargement de l’overlay, la config et la progression sont relues depuis localStorage, ce qui permet de reprendre là où tu t’es arrêté, même après redémarrage.
+- Quand tu modifies la config ou réinitialises depuis la page settings, l’overlay détecte les changements via l’événement `storage` et met à jour l’affichage.
 
-// points
-{
-  "bits": 1,
-  "sub": 2,
-  "donation": 1
-}
-```
+### Points de départ
 
-Les paliers sont traités comme des seuils **absolus** (100, 300, 600) et le script calcule automatiquement la progression relative par palier.
+Le champ **“Points de départ”** dans la page settings :
+
+- **N’est pas appliqué automatiquement** quand tu cliques sur “Appliquer la configuration”.  
+- Il est utilisé **uniquement** par le bouton **“Réinitialiser la progression”**.  
+- Quand tu cliques sur ce bouton :
+  - `subGoal_currentPoints` est mis à `Points de départ`  
+  - `subGoal_currentLevel` est remis à `0`  
+  - L’overlay se remet à cette nouvelle base au prochain rafraîchissement (ou immédiatement si l’onglet est ouvert).
 
 ## Intégration Streamer.bot
 
-L’overlay utilise un `StreamerbotClient` pour écouter les events WebSocket suivants :
+L’overlay utilise `StreamerbotClient` pour écouter les events WebSocket Streamer.bot et transformer les événements en points.
+
+Events utilisés :
 
 - `Twitch.Sub`  
 - `Twitch.ReSub`  
 - `Twitch.GiftSub`  
 - `Twitch.Cheer`  
-- `Streamlabs.Donation`  (Pas encore testé)
-- `StreamElements.Tip`  (Pas encore testé)
+- `Streamlabs.Donation` *(handler présent, à tester selon setup)*  
+- `StreamElements.Tip` *(handler présent, à tester selon setup)*  
 - `TipeeeStream.Donation`
 
-Chaque handler convertit l’event en points selon `GOAL_SETTINGS.points` puis appelle `addPoints(...)` / `addPointsWithSmoothLevels(...)` pour mettre à jour la barre.
+Logique de conversion (exemples par défaut) :
+
+```json
+{
+  "bits": 1,       // 100 bits = 1 point
+  "sub":  2,       // 1 sub = 2 points
+  "donation": 1    // 1 € = 1 point
+}
+```
+
+Les handlers Streamer.bot côté overlay :
+
+- Lisent les données de l’event (montant, bits, tier, etc.).  
+- Calculent le nombre de points à ajouter.  
+- Appellent `addPoints(...)` pour mettre à jour :
+  - `currentPoints`  
+  - le palier courant  
+  - l’animation de la barre  
+  - la sauvegarde localStorage (`subGoal_currentPoints`, `subGoal_currentLevel`).
 
 Assure‑toi dans Streamer.bot que :
 
-- Le serveur WebSocket est activé.  
-- Les triggers correspondants sont bien configurés pour les plateformes que tu utilises.
+- Le **serveur WebSocket** est activé.  
+- Les intégrations Twitch / Streamlabs / StreamElements / TipeeeStream sont configurées.  
+- Les events correspondants sont bien reçus (tu peux vérifier dans les logs Streamer.bot).
 
+***
