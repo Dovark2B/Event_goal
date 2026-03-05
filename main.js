@@ -200,7 +200,11 @@ function sleep(ms) {
 }
 
 async function addPoints(pts) {
-    currentPoints += pts;
+    const numericPts = parseFloat(pts) || 0;
+
+    currentPoints += numericPts;
+
+    currentPoints = Math.round(currentPoints * 100) / 100;
 
     // Avance les paliers si besoin
     while (
@@ -298,7 +302,7 @@ function updateBar() {
         lastProgressDisplay,
         progress,
         400,
-        (v) => `${v.toFixed(1)}%`
+        (v) => `${v.toFixed(2)}%`
     );
     lastProgressDisplay = progress;
 
