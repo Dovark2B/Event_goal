@@ -36,7 +36,7 @@ https://dovark2b.github.io/Event_goal/settings
 2. Clone du dépôt :
 
 ```bash
-git clone https://github.com/TON_USER/event_goal.git
+git clone https://github.com/Dovark2B/event_goal.git
 cd event_goal
 ```
 
