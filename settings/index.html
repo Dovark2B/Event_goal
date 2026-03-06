@@ -246,6 +246,9 @@
       <label>Titre final affiché :
         <input type="text" id="finalTitleInput" placeholder="Ex : Merci pour la thune !">
       </label>
+      <label>Couleur du titre final :
+        <input type="color" id="finalTitleColorInput" value="#ffffff">
+      </label>
     </div>
 
     <h3>Paliers</h3>
@@ -273,6 +276,16 @@
         Cacher les animations de vagues
       </label>
     </div>
+
+    <h3>Couleurs de l'interface</h3>
+    <div class="conversion">
+      <label>Fond du conteneur : <input type="color" id="bgColorInput" value="#1e1e1efc"></label>
+      <label>Fond de la barre vide : <input type="color" id="emptyBarColorInput" value="#ffffff4d"></label>
+      <label>Texte - Pourcentage : <input type="color" id="percentColorInput" value="#ffffff"></label>
+      <label>Texte - Points actuels : <input type="color" id="currentPtsColorInput" value="#ffffff"></label>
+      <label>Texte - Objectif : <input type="color" id="targetPtsColorInput" value="#ffffff"></label>
+    </div>
+
 
     <h3>Couleurs du dégradé</h3>
     <div class="conversion">
@@ -313,7 +326,8 @@
       POINTS_CONFIG: 'subGoal_pointsConfig',
       GRADIENT: 'subGoal_gradient',
       OPTIONS: 'subGoal_options',
-      FINAL_TITLE: 'subGoal_finalTitle'
+      FINAL_TITLE: 'subGoal_finalTitle',
+      COLORS: 'subGoal_colors'
     };
 
     const levelsContainer = document.getElementById("levels-container");
@@ -374,6 +388,9 @@
           <label>Objectif (points):
             <input type="number" data-index="${i}" data-field="target" min="1" value="${lvl.target}">
           </label>
+          <label>Couleur du titre:
+            <input type="color" data-index="${i}" data-field="color" value="${lvl.color || '#ffffff'}">
+          </label>
           <button type="button" class="deleteBtn" data-index="${i}">🗑️ Supprimer ce palier</button>
         `;
         levelsContainer.appendChild(div);
@@ -381,7 +398,20 @@
     }
 
     addButton.onclick = () => {
-      levels.push({ name: "Nouveau palier", target: 100 });
+      const lastTarget = levels.length > 0 ? parseFloat(levels[levels.length - 1].target) : 0;
+      let firstTarget = levels.length > 0 ? parseFloat(levels[0].target) : 0;
+
+      if (firstTarget === 0 || isNaN(firstTarget)) {
+        firstTarget = 1;
+      }
+
+      const newTarget = lastTarget + firstTarget;
+
+      levels.push({
+        name: `Palier ${levels.length + 1}`,
+        target: newTarget
+      });
+
       renderLevels();
     };
 
@@ -421,7 +451,7 @@
         if (savedLevels) {
           levels = JSON.parse(savedLevels);
           renderLevels();
-          
+
           // Afficher le nom du palier en cours
           if (currentLevel < levels.length) {
             document.getElementById("statusLevelName").textContent = levels[currentLevel].name;
@@ -436,6 +466,17 @@
           document.getElementById("bitsInput").value = pts.bits;
           document.getElementById("subsInput").value = pts.sub;
           document.getElementById("donInput").value = pts.donation;
+        }
+
+        const savedColors = localStorage.getItem(STORAGE_KEYS.COLORS);
+        if (savedColors) {
+          const cols = JSON.parse(savedColors);
+          document.getElementById("bgColorInput").value = cols.bg;
+          document.getElementById("emptyBarColorInput").value = cols.emptyBar;
+          document.getElementById("percentColorInput").value = cols.percent;
+          document.getElementById("currentPtsColorInput").value = cols.currentPts;
+          document.getElementById("targetPtsColorInput").value = cols.targetPts;
+          document.getElementById("finalTitleColorInput").value = cols.finalTitle;
         }
 
         const savedGradient = localStorage.getItem(STORAGE_KEYS.GRADIENT);
@@ -490,6 +531,18 @@
         };
         localStorage.setItem(STORAGE_KEYS.POINTS_CONFIG, JSON.stringify(points));
 
+        // Sauvegarder les couleurs
+        const customColors = {
+          bg: document.getElementById("bgColorInput").value,
+          emptyBar: document.getElementById("emptyBarColorInput").value,
+          percent: document.getElementById("percentColorInput").value,
+          currentPts: document.getElementById("currentPtsColorInput").value,
+          targetPts: document.getElementById("targetPtsColorInput").value,
+          finalTitle: document.getElementById("finalTitleColorInput").value
+        };
+        localStorage.setItem(STORAGE_KEYS.COLORS, JSON.stringify(customColors));
+
+
         // Sauvegarder le gradient
         const gradient = {
           c1: gradientColor1Input.value,
@@ -520,7 +573,7 @@
 
         localStorage.setItem(STORAGE_KEYS.CURRENT_POINTS, startPoints);
         localStorage.setItem(STORAGE_KEYS.CURRENT_LEVEL, 0);
-        
+
         showMessage(`🔄 Progression réinitialisée à ${startPoints} points !`, "warning");
 
         // Rafraîchir l'affichage

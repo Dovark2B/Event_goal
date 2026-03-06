@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
     POINTS_CONFIG: 'subGoal_pointsConfig',
     GRADIENT: 'subGoal_gradient',
     OPTIONS: 'subGoal_options',
-    FINAL_TITLE: 'subGoal_finalTitle'
+    FINAL_TITLE: 'subGoal_finalTitle',
+    COLORS: 'subGoal_colors'
 };
 
 // Extraction uniquement de l'adresse Streamerbot (optionnel)
@@ -70,12 +71,12 @@ function loadProgress() {
     try {
         const savedPoints = localStorage.getItem(STORAGE_KEYS.CURRENT_POINTS);
         const savedLevel = localStorage.getItem(STORAGE_KEYS.CURRENT_LEVEL);
-        
+
         if (savedPoints !== null) {
             currentPoints = parseFloat(savedPoints) || 0;
             console.log(`📥 Points chargés: ${currentPoints}`);
         }
-        
+
         if (savedLevel !== null) {
             currentLevel = parseInt(savedLevel) || 0;
             console.log(`📥 Niveau chargé: ${currentLevel}`);
@@ -103,7 +104,7 @@ function saveConfig() {
 function loadConfig() {
     try {
         let hasData = false;
-        
+
         // Charger les paliers
         const savedLevels = localStorage.getItem(STORAGE_KEYS.LEVELS);
         if (savedLevels) {
@@ -111,7 +112,7 @@ function loadConfig() {
             console.log("📥 Paliers chargés:", GOAL_SETTINGS.levels);
             hasData = true;
         }
-        
+
         // Charger la config des points
         const savedPoints = localStorage.getItem(STORAGE_KEYS.POINTS_CONFIG);
         if (savedPoints) {
@@ -119,7 +120,7 @@ function loadConfig() {
             console.log("📥 Config points chargée:", GOAL_SETTINGS.points);
             hasData = true;
         }
-        
+
         // Charger le gradient
         const savedGradient = localStorage.getItem(STORAGE_KEYS.GRADIENT);
         if (savedGradient) {
@@ -127,7 +128,8 @@ function loadConfig() {
             console.log("📥 Gradient chargé:", gradient);
             hasData = true;
         }
-        
+
+
         // Charger les options
         const savedOptions = localStorage.getItem(STORAGE_KEYS.OPTIONS);
         if (savedOptions) {
@@ -135,7 +137,7 @@ function loadConfig() {
             console.log("📥 Options chargées:", options);
             hasData = true;
         }
-        
+
         // Charger le titre final
         const savedFinalTitle = localStorage.getItem(STORAGE_KEYS.FINAL_TITLE);
         if (savedFinalTitle !== null) {
@@ -143,7 +145,22 @@ function loadConfig() {
             console.log("📥 Titre final chargé:", finalTitle);
             hasData = true;
         }
-        
+
+        const savedColors = localStorage.getItem(STORAGE_KEYS.COLORS);
+        if (savedColors) {
+            const colors = JSON.parse(savedColors);
+            document.documentElement.style.setProperty('--bg-color', colors.bg || 'rgba(30, 30, 30, 0.99)');
+            document.documentElement.style.setProperty('--empty-bar-bg', colors.emptyBar || 'rgba(255, 255, 255, 0.3)');
+            document.documentElement.style.setProperty('--percent-color', colors.percent || '#ffffff');
+            document.documentElement.style.setProperty('--current-pts-color', colors.currentPts || '#ffffff');
+            document.documentElement.style.setProperty('--target-pts-color', colors.targetPts || '#ffffff');
+            document.documentElement.style.setProperty('--final-title-color', colors.finalTitle || '#ffffff');
+
+            console.log("📥 Couleurs chargées:", colors);
+            hasData = true;
+        }
+
+
         return hasData;
     } catch (e) {
         console.warn("Erreur chargement config:", e);
@@ -155,16 +172,16 @@ function loadConfig() {
 window.addEventListener('storage', (e) => {
     if (e.key && e.key.startsWith('subGoal_')) {
         console.log("🔄 Changement détecté depuis Settings:", e.key);
-        
+
         // Recharger toute la config
         loadConfig();
         loadProgress();
-        
+
         // Réappliquer le gradient et les options
         goalFill.style.background = `linear-gradient(90deg, ${gradient.c1} 0%, ${gradient.c2} 100%)`;
         wave1.style.backgroundColor = gradient.c2;
         wave2.style.backgroundColor = gradient.c2;
-        
+
         if (options.hideWaves) {
             wave1.style.display = "none";
             wave2.style.display = "none";
@@ -172,7 +189,7 @@ window.addEventListener('storage', (e) => {
             wave1.style.display = "block";
             wave2.style.display = "block";
         }
-        
+
         updateBar();
     }
 });
@@ -277,12 +294,17 @@ function updateBar() {
             400,
             (v) => `${v.toFixed(2)} pts`
         );
-
-        lastPointsDisplay = currentPoints;
+        goalTitle.style.color = "var(--final-title-color)";
+        lastPointsDisplay = currentPoints; 
         goalProgressText.textContent = `${rawProgress.toFixed(1)}%`;
         currentPointsText.textContent = `${currentPoints.toFixed(2)} pts`;
         goalTargetText.textContent = `/ ${lastThreshold} pts`;
         goalFill.style.width = `${clampedWidth}%`;
+        goalFill.style.animation = "pulseFinal 1s linear infinite alternate";
+        wave1.style.animationName = "wave, pulseFinal";
+        wave1.style.animationDuration = "0.5s, 1s";
+        wave2.style.animationName = "wave, pulseFinal";
+        wave2.style.animationDuration = "0.5s, 1s";
         wave1.style.left = `${clampedWidth}%`;
         wave2.style.left = `${clampedWidth}%`;
         return;
@@ -314,7 +336,12 @@ function updateBar() {
         (v) => `${v.toFixed(2)} pts`
     );
     lastPointsDisplay = currentPoints;
-
+    goalTitle.style.color = level.color || '#ffffff'; 
+    goalFill.style.animation = "pulse 2s linear infinite alternate";
+    wave1.style.animationName = "wave, pulse";
+    wave1.style.animationDuration = "0.5s, 2s";
+    wave2.style.animationName = "wave, pulse";
+    wave2.style.animationDuration = "0.5s, 2s";
     goalTargetText.textContent = `/ ${getGoalThreshold(currentLevel)} pts`;
     goalFill.style.width = `${Math.min(progress, 100)}%`;
     wave1.style.left = `${Math.min(progress, 100)}%`;
@@ -324,22 +351,22 @@ function updateBar() {
 // === INITIALISATION ===
 function initialize() {
     console.log("📂 Chargement depuis localStorage...");
-    
+
     const hasData = loadConfig();
-    
+
     // Si aucune donnée, initialiser avec les valeurs par défaut
     if (!hasData) {
         console.log("🆕 Première utilisation - Initialisation avec valeurs par défaut...");
         saveConfig();
     }
-    
+
     loadProgress();
-    
+
     // Appliquer le gradient et les options
     goalFill.style.background = `linear-gradient(90deg, ${gradient.c1} 0%, ${gradient.c2} 100%)`;
     wave1.style.backgroundColor = gradient.c2;
     wave2.style.backgroundColor = gradient.c2;
-    
+
     if (options.hideWaves) {
         wave1.style.display = "none";
         wave2.style.display = "none";
@@ -347,7 +374,7 @@ function initialize() {
         wave1.style.display = "block";
         wave2.style.display = "block";
     }
-    
+
     updateBar();
 }
 
